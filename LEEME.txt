@@ -1,21 +1,2 @@
-SALTAMUNDOS · aplicación instalable
-
-Contenido
-  index.html            el juego
-  manifest.webmanifest  nombre, icono y modo pantalla completa
-  sw.js                 guarda el juego para jugar sin internet
-  lib/, fonts/, icons/  librería 3D, tipografías e iconos
-
-Cómo publicarlo (GitHub Pages)
-  1. Crea un repositorio nuevo en GitHub, por ejemplo "saltamundos".
-  2. Sube TODO el contenido de esta carpeta (no la carpeta en sí) a la raíz del repositorio.
-  3. Settings > Pages > Branch: main / (root) > Save.
-  4. En un par de minutos estará en https://TU-USUARIO.github.io/saltamundos/
-
-Cómo instalarlo
-  Android (Chrome): abre el enlace y pulsa el botón "Instalar" de la pantalla de inicio,
-                    o menú ⋮ > "Instalar aplicación".
-  iPad / iPhone (Safari): botón Compartir > "Añadir a pantalla de inicio".
-
-Después de abrirlo una vez con internet, funciona sin conexión.
-El progreso (gemas, estrellas, gorros) se guarda en cada dispositivo.
+Sube TODOS estos archivos a la raíz del repositorio saltamundos (Add file > Upload files > Commit changes).
+Todos van sueltos, sin carpetas.
