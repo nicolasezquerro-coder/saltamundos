@@ -318,6 +318,7 @@ const PH=1.9,PR=0.42;
 const RIV=a=>268+24*Math.sin(3*a)+10*Math.sin(5*a+1);
 const VOLC=[{x:340,z:-30,h:62,r:60,cr:9},{x:205,z:125,h:40,r:38,cr:6},{x:300,z:-140,h:48,r:50,cr:7}];
 function inVolcano(x,z){return Math.hypot(x,z)>185&&Math.abs(Math.atan2(z,x))<0.75;}
+function inJurassic(x,z){const r=Math.hypot(x,z);return r>186&&r<400&&Math.abs(Math.atan2(z,x))>Math.PI-0.8;}
 function terrRaw(x,z){
   const r=Math.hypot(x,z);if(r<80)return 0;
   const n=0.5+0.5*Math.sin(x*0.045+1.3)*Math.cos(z*0.05-0.7)+0.3*Math.sin(x*0.12+z*0.1)+0.15*Math.sin(x*0.31-z*0.27);
@@ -408,13 +409,13 @@ slab(-100,100,-100,100,-2,0,[HOLE_A,HOLE_B,POND],[M.dirt,M.dirt,M.grass,M.dirt,M
 {
   const SEG=hiQ?300:220,g=new THREE.PlaneGeometry(900,900,SEG,SEG);g.rotateX(-Math.PI/2);
   const p=g.attributes.position,cols=[],c=new THREE.Color();
-  const C={g:new THREE.Color(0x6fa548),g2:new THREE.Color(0x58903a),rock:new THREE.Color(0x857a6c),snow:new THREE.Color(0xf6f8fb),sand:new THREE.Color(0xa8936a),bas:new THREE.Color(0x3b3533),emb:new THREE.Color(0x7a2c16)};
+  const C={j:new THREE.Color(0x4e9a3e),g:new THREE.Color(0x6fa548),g2:new THREE.Color(0x58903a),rock:new THREE.Color(0x857a6c),snow:new THREE.Color(0xf6f8fb),sand:new THREE.Color(0xa8936a),bas:new THREE.Color(0x3b3533),emb:new THREE.Color(0x7a2c16)};
   for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),r=Math.hypot(x,z);p.setY(i,r<80?-0.3:terrH(x,z)-0.02);}
   g.computeVertexNormals();const nn=g.attributes.normal;
   for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),y=p.getY(i),ny=nn.getY(i),r=Math.hypot(x,z);
     const rd=r>200?Math.abs(r-RIV(Math.atan2(z,x))):99;
     if(inVolcano(x,z)){c.copy(C.bas);for(const V of VOLC){const d=Math.hypot(x-V.x,z-V.z);if(d<V.cr*2.4)c.lerp(C.emb,1-d/(V.cr*2.4));}if(rd<14)c.lerp(C.emb,0.7*(1-rd/14));}
-    else{c.copy(C.g);if(Math.sin(x*0.05)*Math.cos(z*0.04)>0.35)c.lerp(C.g2,0.6);if(rd<13)c.lerp(C.sand,1-rd/13);
+    else{c.copy(inJurassic(x,z)?C.j:C.g);if(Math.sin(x*0.05)*Math.cos(z*0.04)>0.35)c.lerp(C.g2,0.6);if(rd<13)c.lerp(C.sand,1-rd/13);
       if(y>18||ny<0.78)c.lerp(C.rock,Math.min(1,Math.max((y-18)/10,(0.78-ny)*4)));
       if(y>38)c.lerp(C.snow,Math.min(1,(y-38)/4));}
     c.convertSRGBToLinear();cols.push(c.r,c.g,c.b);}
@@ -655,6 +656,49 @@ CAMPS.forEach(c=>{const x=c.x,z=c.z,y=c.y;
   else{const z0=sn*(r-14),z1=sn*(r+14),xc=cs*r;addBox(xc-1.7,y-0.5,Math.min(z0,z1),xc+1.7,y,Math.max(z0,z1),m);[-1.6,1.6].forEach(o=>addBox(xc+o-0.08,y,Math.min(z0,z1),xc+o+0.08,y+0.9,Math.max(z0,z1),m,{solid:false}));}});
 [[135,'Más allá de las montañas:\nTierras Salvajes'],[0,'Más allá de las montañas:\nTierra de Volcanes'],[-90,'Más allá de las montañas:\nel gran río']].forEach(q=>{const a=q[0]*Math.PI/180,x=Math.cos(a)*92,z=Math.sin(a)*92;const sg=label(q[1],{size:1.3,bg:'#fff6d6'});sg.position.set(x,terrH(x,z)+7,z);scene.add(sg);});
 
+/* ---------- más vegetación, Bosque Jurásico y árboles gigantes ---------- */
+const GIANTS=[{x:-330,z:70,H:88},{x:-280,z:-100,H:74},{x:-360,z:-30,H:80}];
+const okWild=(x,z,cl)=>{const r=Math.hypot(x,z);if(r<186||r>400||inVolcano(x,z))return false;if(Math.abs(r-RIV(Math.atan2(z,x)))<(cl||12))return false;if(CAMPS.some(c=>Math.hypot(x-c.x,z-c.z)<16))return false;if(GIANTS.some(G=>Math.hypot(x-G.x,z-G.z)<15))return false;return true;};
+const cycadLeaf=std({color:0x3f8f3a,roughness:0.8,side:THREE.DoubleSide});
+function cycad(x,z,y,s){const tg=new THREE.CylinderGeometry(0.35*s,0.5*s,2.2*s,8);tg.translate(x,y+1.1*s,z);worldUV(tg,1.5);addStatic(tg,M.bark);
+  for(let k=0;k<9;k++){const lg=new THREE.BoxGeometry(0.4*s,0.05*s,2.7*s);lg.translate(0,0,1.35*s);lg.rotateX(-0.3);lg.rotateY(k/9*6.28+s);lg.translate(x,y+2.2*s,z);addStatic(lg,cycadLeaf,false);}
+  addSolid(x-0.4*s,y,z-0.4*s,x+0.4*s,y+2.2*s,z+0.4*s);}
+for(let i=0,n=0;i<5000&&n<330;i++){const a=R0()*6.28,r=186+R0()*214,x=Math.cos(a)*r,z=Math.sin(a)*r;if(!okWild(x,z,15))continue;const j=inJurassic(x,z);if(!j&&R0()<0.45)continue;const y=terrH(x,z);if(j&&R0()<0.45)cycad(x,z,y,0.9+R0()*0.7);else tree(x,z,y-0.1,(j?1.2:0.9)+R0()*0.8);n++;}
+const giantBark=U(std({map:texBark,color:0x7a6450,bumpMap:texBark,bumpScale:0.08,roughness:1}),4);
+const giantLeaf=std({color:0x2f7a4a,flatShading:true,roughness:0.85});
+const glowA=new THREE.MeshBasicMaterial({color:0x5ff2ff,toneMapped:false}),glowB=new THREE.MeshBasicMaterial({color:0xd07bff,toneMapped:false});
+GIANTS.forEach((G,gi)=>{const y=terrH(G.x,G.z),H=G.H,TH=H*0.86;G.y=y;G.top=TH;
+  const tg=new THREE.CylinderGeometry(4.2,7.5,TH,20,10);const p=tg.attributes.position;
+  for(let i=0;i<p.count;i++){const yy=p.getY(i),ang=Math.atan2(p.getZ(i),p.getX(i)),k=1+0.09*Math.sin(ang*5+yy*0.12);p.setX(i,p.getX(i)*k);p.setZ(i,p.getZ(i)*k);}
+  tg.computeVertexNormals();tg.translate(G.x,y+TH/2,G.z);worldUV(tg,4);addStatic(tg,giantBark);
+  solids.push({t:'cyl',cx:G.x,cz:G.z,r:6.3,miny:y-1,maxy:y+TH-1.3,on:true});
+  for(let k=0;k<8;k++){const a=k/8*6.28+gi;const rg=new THREE.CylinderGeometry(0.6,2.2,15,8);rg.rotateZ(-1.0);rg.rotateY(-a);rg.translate(G.x+Math.cos(a)*7.5,y+2.6,G.z+Math.sin(a)*7.5);worldUV(rg,3);addStatic(rg,giantBark);}
+  [0.38,0.6].forEach((f,k)=>{const a=k*2.3+gi,py=y+TH*f;const px=G.x+Math.cos(a)*11,pz=G.z+Math.sin(a)*11;addCyl(px,pz,4.2,py,1,M.plank,null);
+    const bg=new THREE.CylinderGeometry(0.9,1.5,10,8);bg.rotateZ(Math.PI/2);bg.rotateY(-a);bg.translate(G.x+Math.cos(a)*6,py-0.7,G.z+Math.sin(a)*6);worldUV(bg,3);addStatic(bg,giantBark);});
+  addCyl(G.x,G.z,8.5,y+TH,1.2,M.plank,null);
+  [[0,9,24],[7,15,17],[-6,18,14],[0,23,11]].forEach(c=>{const g=new THREE.IcosahedronGeometry(c[2],1);const pp=g.attributes.position;for(let i=0;i<pp.count;i++){const f=0.85+R0()*0.3;pp.setXYZ(i,pp.getX(i)*f,pp.getY(i)*f*0.42,pp.getZ(i)*f);}g.computeVertexNormals();g.translate(G.x+c[0],y+TH+c[1],G.z-c[0]*0.6);addStatic(g,giantLeaf);});
+  for(let k=0;k<18;k++){const a=R0()*6.28,r=9+R0()*13,len=12+R0()*26,vx=G.x+Math.cos(a)*r,vz=G.z+Math.sin(a)*r,top=y+TH+5;const vg=new THREE.CylinderGeometry(0.12,0.12,len,5);vg.translate(vx,top-len/2,vz);const m=k%2?glowA:glowB;addStatic(vg,m,false);
+    for(let b=0;b<4;b++){const sg=new THREE.SphereGeometry(0.3,8,6);sg.translate(vx,top-len*(0.2+b*0.22),vz);addStatic(sg,m,false);}}
+  for(let k=0;k<12;k++){const a=R0()*6.28,r=9+R0()*8,mx=G.x+Math.cos(a)*r,mz=G.z+Math.sin(a)*r,my=terrH(mx,mz),hh=0.6+R0()*1.4;const st=new THREE.CylinderGeometry(0.12,0.18,hh,6);st.translate(mx,my+hh/2,mz);addStatic(st,cm(0xe9e2ff),false);const cp=new THREE.SphereGeometry(0.5+hh*0.3,10,6,0,6.3,0,1.6);cp.scale(1,0.55,1);cp.translate(mx,my+hh,mz);addStatic(cp,k%2?glowA:glowB,false);}
+  const sg=label('Árbol Gigante',{size:1.8,bg:'#d9f7ff'});sg.position.set(G.x,y+TH+34,G.z);scene.add(sg);});
+{
+  const BU=THREE.BufferGeometryUtils,m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),sc=new THREE.Vector3(),pos=new THREE.Vector3(),col=new THREE.Color();
+  const leaves=[];for(let k=0;k<7;k++){const pg=new THREE.PlaneGeometry(0.32,1.6,1,4);const p=pg.attributes.position;for(let i=0;i<p.count;i++){const yy=p.getY(i)+0.8;p.setX(i,p.getX(i)*(1-yy/1.7));p.setY(i,yy*0.75);p.setZ(i,yy*0.55+yy*yy*0.12);}pg.rotateY(k/7*6.28);leaves.push(pg.index?pg.toNonIndexed():pg);}
+  const fernG=BU?BU.mergeBufferGeometries(leaves):leaves[0];{const n=fernG.attributes.normal;for(let i=0;i<n.count;i++)n.setXYZ(i,0,1,0);}
+  const place=(N,geo,mat,filter,scaleFn,colorFn,yOff)=>{const im=new THREE.InstancedMesh(geo,mat,N);let k=0;
+    for(let i=0;i<N*8&&k<N;i++){const a=R0()*6.28,r=186+R0()*214,x=Math.cos(a)*r,z=Math.sin(a)*r;if(!okWild(x,z,11)||!filter(x,z))continue;const y=terrH(x,z);const s=scaleFn(x,z);
+      e.set(0,R0()*6.28,0);q.setFromEuler(e);sc.set(s,s*(0.8+R0()*0.4),s);pos.set(x,y+(yOff||0)*s,z);m4.compose(pos,q,sc);im.setMatrixAt(k,m4);im.setColorAt(k,colorFn(col));k++;}
+    im.count=k;im.receiveShadow=true;scene.add(im);return im;};
+  place(1700,fernG,std({roughness:0.85,side:THREE.DoubleSide}),(x,z)=>inJurassic(x,z)||R0()<0.35,(x,z)=>inJurassic(x,z)?1.6+R0()*1.6:0.9+R0()*0.6,c=>c.setHSL(0.27+R0()*0.06,0.55,0.25+R0()*0.12));
+  const bushG=new THREE.IcosahedronGeometry(1,1);bushG.scale(1,0.7,1);
+  place(950,bushG,std({flatShading:true,roughness:0.9}),()=>true,()=>0.7+R0()*1.1,c=>c.setHSL(0.25+R0()*0.08,0.5,0.22+R0()*0.12),0.45).castShadow=true;
+  const gl=[new THREE.CylinderGeometry(0.04,0.06,0.9,5).translate(0,0.45,0),new THREE.SphereGeometry(0.18,8,6).translate(0,0.95,0)].map(g=>g.index?g.toNonIndexed():g);
+  const glowG=BU?BU.mergeBufferGeometries(gl):gl[1];
+  place(300,glowG,new THREE.MeshBasicMaterial({toneMapped:false}),(x,z)=>inJurassic(x,z),()=>0.8+R0()*1.2,c=>c.setHex([0x5ff2ff,0xd07bff,0xb6ff5f][Math.floor(R0()*3)]));
+  [[-300,40],[-250,-40],[-340,120]].forEach(n=>{const y=terrH(n[0],n[1]);const t=new THREE.TorusGeometry(1.4,0.5,8,18);t.rotateX(Math.PI/2);t.scale(1,0.6,1);t.translate(n[0],y+0.25,n[1]);addStatic(t,cm(0x7a5a3a,{roughness:1}));
+    for(let k=0;k<4;k++){const g=new THREE.SphereGeometry(0.42,12,10);g.scale(1,1.3,1);g.translate(n[0]+Math.cos(k*1.6)*0.55,y+0.55,n[1]+Math.sin(k*1.6)*0.55);addStatic(g,cm(0xe8dcc0,{roughness:0.5}));}});
+}
+
 /* ---------- césped animado ---------- */
 let grassMesh=null;const grassU={uTime:{value:0}};
 {
@@ -864,6 +908,7 @@ for(let i=0;i<CL.length-1;i++){const a=CL[i],b=CL[i+1];lstar((a[0]+b[0])/2,Math.
 [[28,111.4,31],[42,113.6,28],[54,114.2,28],[60,117.5,18],[56,118.6,8],[48,118.8,1],[40,119.3,-4],[30,119.4,-12]].forEach(p=>lstar(p[0],p[1],p[2]));
 for(let i=0,n=0;i<300&&n<10;i++){const a=R0()*6.28,r=4+R0()*24,x=-10+Math.cos(a)*r,z=-10+Math.sin(a)*r;if(floorAt(x,z,201).y>200.05)continue;lstar(x,201.5,z);n++;}
 for(let i=0;i<6;i++){const a=i/6*Math.PI*2;lstar(ISLE[0]+Math.cos(a)*6,31.4,ISLE[1]+Math.sin(a)*6);}
+GIANTS.forEach(G=>{for(let i=0;i<5;i++){const a=i/5*Math.PI*2;lstar(G.x+Math.cos(a)*5,G.y+G.top+1.4,G.z+Math.sin(a)*5);}});
 
 /* ================= estado guardado ================= */
 let visited=[true,false,false,false,false];
@@ -985,7 +1030,7 @@ function checkpoint(){if(P.fly){safe=null;return;}
 }
 const ALTF=[[25,'¡25 metros! Más alto que una casa de 8 pisos.'],[56,'¡56 metros! Tan alto como la Torre de Pisa.'],[93,'¡93 metros! Más alto que la Estatua de la Libertad.'],[172,'¡172 metros! Más alto que la Sagrada Família de Barcelona.'],[200,'En la vida real la Luna está a 384.000 km. ¡Aquí la hemos puesto muy cerca!']];
 
-function extraUpdate(dt){flightExtra(dt);combatUpdate(dt);
+function extraUpdate(dt){flightExtra(dt);combatUpdate(dt);dinoExtra(dt);
   for(const q of littleStars){if(q.taken)continue;q.mesh.rotation.y+=dt*2.5;
     if(mode==='play'&&Math.abs(P.x-q.mesh.position.x)<1.1&&Math.abs(P.z-q.mesh.position.z)<1.1&&Math.abs(P.y+0.9-q.mesh.position.y)<1.5){q.taken=true;q.mesh.visible=false;addStars(1);tone(1320,1760,0.12,'sine',0.1);puff(q.mesh.position.x,q.mesh.position.y-0.6,q.mesh.position.z,4,0xffd84d);save();}}
   npcs.forEach(n=>{n.mark.visible=quizLeft(n).length>0&&!n.near;n.mark.position.y=2.75+Math.sin(T*3+n.idx)*0.12;});
@@ -1133,7 +1178,7 @@ $('bCam').onclick=()=>{camMode=camMode==='pajaro'?'normal':'pajaro';applyCam();s
 
 /* ================= vidas, armas y enemigos ================= */
 let health=100,lives=3,invT=0,lastHurt=-99,atkT=0,swingT=0,swingDur=0,meleeDue=-1,region='',wObj=null,lifeDirtyT=0;
-const REG={mount:{n:'Montañas Nevadas',fact:'En las cumbres hace tanto frío que la nieve no se derrite: por eso los picos más altos están blancos casi todo el año.'},
+const REG={jur:{n:'Bosque Jurásico',fact:'Hace millones de años la Tierra estaba llena de dinosaurios y de plantas como los helechos, que todavía existen hoy. Hay dinosaurios pacíficos y otros peligrosos: ¡cuidado con el tiranosaurio y los dragones!'},mount:{n:'Montañas Nevadas',fact:'En las cumbres hace tanto frío que la nieve no se derrite: por eso los picos más altos están blancos casi todo el año.'},
   wild:{n:'Tierras Salvajes',fact:'Aquí viven lobos, jabalíes y osos que pueden atacarte. Busca armas en los pedestales, cúrate con los corazones y descansa en los campamentos.'},
   vol:{n:'Tierra de Volcanes',fact:'Un volcán es una abertura por la que sale magma, roca fundida del interior de la Tierra. Cuando sale fuera se llama lava y está a más de 1.000 grados.'},
   river:{n:'El gran río',fact:'Los ríos nacen en las montañas con la lluvia y la nieve derretida, y bajan hasta el mar. Su agua es dulce.'}};
@@ -1210,7 +1255,7 @@ const ETYPES={
 const enemies=[];
 const barBg=new THREE.MeshBasicMaterial({color:0x1d2340,depthTest:false,transparent:true}),barFg=new THREE.MeshBasicMaterial({color:0xff4d4d,depthTest:false,transparent:true});
 const barBgG=new THREE.PlaneGeometry(1.24,0.18),barFgG=new THREE.PlaneGeometry(1.16,0.1);barFgG.translate(0.58,0,0);
-function spawnEnemy(type,x,z){const T=ETYPES[type];const o=type==='golem'?golem():type==='magma'?magmaBlob():quad(T.d);o.scale.setScalar(T.s);scene.add(o);
+function spawnEnemy(type,x,z){const T=ETYPES[type];const o=T.make?T.make():type==='golem'?golem():type==='magma'?magmaBlob():quad(T.d);o.scale.setScalar(T.s);scene.add(o);
   const bar=new THREE.Group();const bb=new THREE.Mesh(barBgG,barBg);bb.renderOrder=30;const bf=new THREE.Mesh(barFgG,barFg);bf.position.set(-0.58,0,0.01);bf.renderOrder=31;bar.add(bb,bf);bar.visible=false;scene.add(bar);
   const ex=label('!',{size:1/T.s,bg:'#ff6b6b'});ex.visible=false;ex.position.y=T.barY/T.s+0.4;o.add(ex);
   const fx=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xffffff,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0,toneMapped:false}));fx.scale.set(3,3,1);fx.position.y=0.9;o.add(fx);
@@ -1230,10 +1275,10 @@ function loseLife(){lives--;if(P.fly)endFly(true);
   if(lives>0){health=100;goCamp();openCard('¡Uy!','Has perdido una vida',`Te quedan ${lives} ${lives===1?'vida':'vidas'}. Vuelves al campamento más cercano con la vida al 100%. Consejo: lleva un arma y cúrate con los corazones o en los campamentos.`);}
   else{lives=3;health=100;teleport(0);openCard('Fin de la partida','¡Te has quedado sin vidas!','No pasa nada: guardas tus gemas, estrellas y armas. Vuelves al valle con 3 vidas nuevas.');}
   enemies.forEach(e=>{if(e.state==='alive'){e.x=e.home[0];e.z=e.home[1];}});renderLife();}
-function nearestEnemy(range,minDot){let best=null,bd=range;const fx=Math.sin(P.rot),fz=Math.cos(P.rot);for(const e of enemies){if(e.state!=='alive')continue;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz);if(d>bd)continue;if(minDot>-1&&(dx*fx+dz*fz)/(d||1)<minDot)continue;best=e;bd=d;}return best;}
-function damageEnemy(e,dmg,nx,nz){if(e.state!=='alive')return;e.hp-=dmg;e.flash=0.2;e.x+=nx*1.4;e.z+=nz*1.4;e.cd=Math.max(e.cd,0.6);
+function nearestEnemy(range,minDot){let best=null,bd=range;const fx=Math.sin(P.rot),fz=Math.cos(P.rot);for(const e of enemies){if(e.state!=='alive'||e.T.peaceful)continue;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz);if(d>bd)continue;if(minDot>-1&&(dx*fx+dz*fz)/(d||1)<minDot)continue;best=e;bd=d;}return best;}
+function damageEnemy(e,dmg,nx,nz){if(e.state!=='alive')return;if(e.T.peaceful){toast('El '+e.T.n.toLowerCase()+' es pacífico: no hace falta luchar',2000);return;}e.angry=15;e.hp-=dmg;e.flash=0.2;e.x+=nx*1.4;e.z+=nz*1.4;e.cd=Math.max(e.cd,0.6);
   if(e.hp<=0){e.state='flee';e.fleeT=1.2;addStars(e.T.reward);puff(e.x,e.y+0.8,e.z,14,e.T.kind==='monster'?0x6a5a55:0xd9cbb0);SFX.gem();
-    toast(e.T.kind==='animal'?`¡El ${e.T.n.toLowerCase()} huye asustado! +${e.T.reward} estrellas`:`¡${e.T.n} derrotado! +${e.T.reward} estrellas`,2200);
+    toast(e.T.kind==='monster'?`¡${e.T.n} derrotado! +${e.T.reward} estrellas`:e.T.kind==='dragon'?`¡El dragón se marcha volando! +${e.T.reward} estrellas`:`¡El ${e.T.n.toLowerCase()} huye asustado! +${e.T.reward} estrellas`,2200);
     if(!killSeen[e.type]){killSeen[e.type]=1;setTimeout(()=>toast('¿Sabías que…? '+e.T.fact,6000),900);}save();}
   else hit(0.08,900,0.2);}
 const flying=[];const arrowMat=cm(0xd9c49a),arrowTip=std({color:0xb0b8c4,metalness:0.8,roughness:0.3});
@@ -1252,7 +1297,7 @@ function attack(){
   if(curW==='arco'){if(arrows<=0){toast('No te quedan flechas. Busca carcajes o descansa en un campamento');atkT=0.3;return;}arrows--;shootArrow(tgt);renderWeapons();save();tone(520,240,0.15,'triangle',0.1);}
   else{meleeDue=W.dur*0.45;hit(0.14,1700,0.12);}}
 function meleeResolve(){const W=WEAP[curW];if(!W||!W.rng)return;const fx=Math.sin(P.rot),fz=Math.cos(P.rot);
-  for(const e of enemies){if(e.state!=='alive')continue;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz);if(d>W.rng+e.T.rad)continue;if(Math.abs(e.y-P.y)>2.5)continue;if((dx*fx+dz*fz)/(d||1)<W.dot)continue;damageEnemy(e,W.dmg,dx/(d||1),dz/(d||1));}}
+  for(const e of enemies){if(e.state!=='alive'||e.T.peaceful)continue;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz);if(d>W.rng+e.T.rad)continue;if(Math.abs(e.y-P.y)>2.5)continue;if((dx*fx+dz*fz)/(d||1)<W.dot)continue;damageEnemy(e,W.dmg,dx/(d||1),dz/(d||1));}}
 function weaponVisual(dt){
   if(wObj)wObj.visible=!P.fly;
   const u=player.userData,arm=u.arms[0];
@@ -1261,7 +1306,7 @@ function weaponVisual(dt){
     if(meleeDue>0){meleeDue-=dt;if(meleeDue<=0)meleeResolve();}}
   else{arm.rotation.z=0;if(curW&&!P.fly&&P.ground)arm.rotation.x=Math.min(arm.rotation.x,-0.35);}
 }
-function regionAt(){const r=Math.hypot(P.x,P.z);if(P.y<-10||r<80)return '';if(r<182)return 'mount';return inVolcano(P.x,P.z)?'vol':'wild';}
+function regionAt(){const r=Math.hypot(P.x,P.z);if(P.y<-10||r<80)return '';if(r<182)return 'mount';return inVolcano(P.x,P.z)?'vol':inJurassic(P.x,P.z)?'jur':'wild';}
 function combatUpdate(dt){
   texLava.offset.y-=dt*0.04;
   smokes.forEach(s=>{s.t+=dt*0.12;if(s.t>1)s.t-=1;const t=s.t;s.sp.position.set(s.V.x+Math.sin(t*6+s.V.x)*3*t,s.V.ly+2+t*28,s.V.z+t*6);s.sp.scale.setScalar(4+t*16);s.sp.material.opacity=0.55*(1-t);});
@@ -1292,7 +1337,7 @@ function combatUpdate(dt){
       else{p.taken=true;p.rt=60;p.m.visible=false;p.gl.visible=false;arrows+=10;renderWeapons();save();tone(500,800,0.15,'triangle',0.1);toast('+10 flechas',1200);}}}
   for(let i=flying.length-1;i>=0;i--){const a=flying[i];a.t-=dt;
     if(!a.stuck){a.v.y-=6*dt;a.m.position.addScaledVector(a.v,dt);tmpV.copy(a.m.position).add(a.v);a.m.lookAt(tmpV);
-      for(const e of enemies){if(e.state!=='alive')continue;const dx=e.x-a.m.position.x,dy=e.y+0.7*e.T.s-a.m.position.y,dz=e.z-a.m.position.z;if(dx*dx+dy*dy+dz*dz<(e.T.rad+0.7)**2){const d=Math.hypot(a.v.x,a.v.z)||1;damageEnemy(e,WEAP.arco.dmg,a.v.x/d,a.v.z/d);a.t=0;break;}}
+      for(const e of enemies){if(e.state!=='alive'||e.T.peaceful)continue;const dx=e.x-a.m.position.x,dy=e.y+0.7*e.T.s-a.m.position.y,dz=e.z-a.m.position.z;if(dx*dx+dy*dy+dz*dz<(e.T.rad+0.7)**2){const d=Math.hypot(a.v.x,a.v.z)||1;damageEnemy(e,WEAP.arco.dmg,a.v.x/d,a.v.z/d);a.t=0;break;}}
       const g=Math.hypot(a.m.position.x,a.m.position.z)<80?0:terrH(a.m.position.x,a.m.position.z);if(a.m.position.y<g+0.05){a.stuck=true;a.t=Math.min(a.t,1.5);}}
     if(a.t<=0){scene.remove(a.m);flying.splice(i,1);}}
   const safeZone=Math.hypot(P.x,P.z)<180||!!camp,reach=!P.fly||(P.y-terrH(P.x,P.z))<3;
@@ -1301,10 +1346,10 @@ function combatUpdate(dt){
     e.o.visible=e.state!=='dead'&&far<170;e.bar.visible=false;
     if(e.state==='dead'){e.respawn-=dt;if(e.respawn<=0&&far>40){e.state='alive';e.hp=e.T.hp;e.x=e.home[0];e.z=e.home[1];e.o.scale.setScalar(e.T.s);}continue;}
     if(far>170)continue;
-    e.cd=Math.max(0,e.cd-dt);e.flash=Math.max(0,e.flash-dt);e.fx.material.opacity=e.flash*4;e.lunge=Math.max(0,e.lunge-dt);
+    e.cd=Math.max(0,e.cd-dt);e.flash=Math.max(0,e.flash-dt);e.fx.material.opacity=e.flash*4;e.lunge=Math.max(0,e.lunge-dt);if(e.T.fly){flyerUpdate(e,dt,far,safeZone);continue;}if(e.angry>0)e.angry-=dt;
     let spd=0,tx=e.tx,tz=e.tz;
     if(e.state==='flee'){e.fleeT-=dt;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz)||1;tx=e.x+dx/d*10;tz=e.z+dz/d*10;spd=e.T.spd*1.3;e.o.scale.setScalar(e.T.s*Math.max(0.02,e.fleeT/1.2));e.ex.visible=false;if(e.fleeT<=0){e.state='dead';e.respawn=50;continue;}}
-    else{const homeD=Math.hypot(e.x-e.home[0],e.z-e.home[1]);const chase=reach&&!safeZone&&far<e.T.aggro&&homeD<55;e.ex.visible=chase;
+    else{const homeD=Math.hypot(e.x-e.home[0],e.z-e.home[1]);const chase=!e.T.peaceful&&(!e.T.neutral||e.angry>0)&&reach&&!safeZone&&far<(e.angry>0?40:e.T.aggro)&&homeD<55;e.ex.visible=chase;
       if(chase){tx=P.x;tz=P.z;spd=e.T.spd;if(far<1.1+e.T.rad&&e.cd<=0&&Math.abs(P.y-e.y)<2.5){e.cd=1.3;e.lunge=0.3;hurt(e.T.dmg,e.x,e.z,e.T.n);}if(far<0.8+e.T.rad)spd=0;}
       else if(homeD>55){tx=e.home[0];tz=e.home[1];spd=e.T.spd*0.8;}
       else{e.wait-=dt;if(e.wait<=0){const a=Math.random()*6.28,r=Math.random()*12;e.tx=e.home[0]+Math.cos(a)*r;e.tz=e.home[1]+Math.sin(a)*r;e.wait=3+Math.random()*4;}tx=e.tx;tz=e.tz;spd=e.T.spd*0.3;}
@@ -1320,6 +1365,103 @@ function combatUpdate(dt){
     e.o.rotation.y=e.rot;
     if(e.bar.visible){e.bar.position.set(e.x,e.y+e.T.barY,e.z);e.bar.quaternion.copy(camera.quaternion);}
   }
+}
+
+/* ================= dinosaurios y dragones ================= */
+function dinoBiped(d){const g=new THREE.Group(),legs=[],arms=[];const B=(w,h,dd,c,x,y,z,p,m)=>{const o=new THREE.Mesh(RB(w,h,dd),m||fur(c));o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o;};
+  [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.32,1.05,0);g.add(pv);B(0.36,0.66,0.44,d.body,0,-0.25,0.05,pv);B(0.24,0.5,0.26,d.body,0,-0.75,-0.1,pv);B(0.34,0.1,0.52,0x3a3026,0,-1.0,0.1,pv);legs.push(pv);});
+  const body=new THREE.Group();g.add(body);
+  B(0.85,0.85,1.6,d.body,0,1.35,0,body);B(0.62,0.5,1.2,d.belly,0,1.1,0.1,body);
+  if(d.stripes)[-0.45,0,0.45].forEach(z=>B(0.87,0.12,0.14,d.stripes,0,1.62,z,body));
+  let tz=-0.8,ty=1.35,tw=0.62;for(let i=0;i<4;i++){B(tw,tw*0.9,0.8,d.body,0,ty,tz-0.4,body);tz-=0.75;ty-=0.08;tw*=0.72;}
+  B(0.56,0.62,0.6,d.body,0,1.78,0.85,body);
+  const head=new THREE.Group();head.position.set(0,2.05,1.25);body.add(head);
+  B(0.64,0.52,0.98,d.body,0,0,0.26,head);B(0.56,0.18,0.82,d.belly,0,-0.3,0.3,head);
+  for(let i=0;i<5;i++)[-1,1].forEach(s=>B(0.05,0.1,0.05,0xfaf6ea,s*0.25,-0.2,i*0.15,head,cm(0xfaf6ea,{roughness:0.4})));
+  const eg=new THREE.SphereGeometry(1,10,8);[-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.07);e.position.set(s*0.31,0.12,0.2);head.add(e);B(0.16,0.05,0.04,0x2a1e16,s*0.3,0.22,0.2,head).rotation.z=s*-0.4;});
+  if(d.crest)B(0.08,0.26,0.62,d.crest,0,0.33,0.05,head);
+  [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.4,1.45,0.6);g.add(pv);B(0.12,0.4,0.12,d.body,0,-0.18,0.05,pv);arms.push(pv);});
+  g.userData={legs,arms,head,body};return g;}
+function dinoQuad(d){const g=new THREE.Group(),body=new THREE.Group(),legs=[];g.add(body);const B=(w,h,dd,c,x,y,z,p,m)=>{const o=new THREE.Mesh(RB(w,h,dd),m||fur(c));o.position.set(x,y,z);o.castShadow=true;(p||body).add(o);return o;};
+  const L=d.len,H=d.legH;
+  B(d.w,d.bh,L,d.body,0,H+d.bh*0.4,0);B(d.w*0.8,0.22,L*0.8,d.belly,0,H+0.05,0);
+  if(d.plates)for(let i=0;i<4;i++)B(0.1,0.4,0.5,d.plates,0,H+d.bh*0.95,-L/2+0.6+i*L/4.5);
+  [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(q=>{const pv=new THREE.Group();pv.position.set(q[0]*d.w*0.36,H,q[1]*(L/2-0.45));body.add(pv);B(d.leg||0.45,H,(d.leg||0.45)+0.05,d.body,0,-H/2,0,pv);legs.push(pv);});
+  let tz=-L/2,ty=H+d.bh*0.4,tw=d.w*0.55;for(let i=0;i<(d.tail||4);i++){B(tw,tw,1,d.body,0,ty,tz-0.45);tz-=0.9;ty-=0.12;tw*=0.74;}
+  const head=new THREE.Group();body.add(head);const eg=new THREE.SphereGeometry(1,10,8);
+  if(d.neck){let ny=H+d.bh*0.6,nz=L/2-0.2;for(let i=0;i<d.neck;i++){B(0.6,0.95,0.6,d.body,0,ny+0.4,nz+0.1);ny+=0.85;nz+=0.38;}
+    head.position.set(0,ny+0.45,nz+0.35);B(0.6,0.48,0.85,d.body,0,0,0.1,head);
+    [-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.07);e.position.set(s*0.3,0.1,0.2);head.add(e);});}
+  else{head.position.set(0,H+d.bh*0.5,L/2+0.5);B(0.95,0.82,1.0,d.body,0,0,0.2,head);B(1.9,1.5,0.18,d.frill,0,0.55,-0.25,head);
+    const hm=cm(0xf3ead6,{roughness:0.4});[[-0.3,0.42,0.55],[0.3,0.42,0.55]].forEach(p=>{const c=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.95,8),hm);c.position.set(p[0],p[1],p[2]);c.rotation.x=1.1;c.castShadow=true;head.add(c);});
+    const n=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.42,8),hm);n.position.set(0,0.12,0.85);n.rotation.x=1.2;head.add(n);B(0.42,0.3,0.32,0x5a4a3a,0,-0.2,0.75,head);
+    [-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.08);e.position.set(s*0.42,0.18,0.42);head.add(e);});}
+  g.userData={legs,head,body,quad:true};return g;}
+function dragonM(c){const g=new THREE.Group();const B=(w,h,dd,col,x,y,z,p,m)=>{const o=new THREE.Mesh(RB(w,h,dd),m||fur(col));o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o;};
+  B(1.1,1.0,2.4,c.body,0,0,0);B(0.8,0.3,2.0,c.belly,0,-0.42,0.1);
+  for(let i=0;i<3;i++)B(0.62-i*0.06,0.62,0.7,c.body,0,0.35+i*0.32,1.3+i*0.55);
+  const head=new THREE.Group();head.position.set(0,1.45,3.05);g.add(head);
+  B(0.82,0.62,1.1,c.body,0,0,0,head);B(0.62,0.42,0.65,c.body,0,-0.1,0.72,head);
+  const hm=cm(0xf3ead6,{roughness:0.4});[-1,1].forEach(s=>{const h=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.7,6),hm);h.position.set(s*0.28,0.5,-0.4);h.rotation.x=-1.0;head.add(h);
+    const e=new THREE.Mesh(new THREE.SphereGeometry(0.09,10,8),new THREE.MeshBasicMaterial({color:0xffe14d,toneMapped:false}));e.position.set(s*0.34,0.14,0.25);head.add(e);});
+  for(let i=0;i<6;i++){const sp=new THREE.Mesh(new THREE.ConeGeometry(0.14,0.45,5),fur(c.spike));sp.position.set(0,0.62-i*0.03,1.0-i*0.45);g.add(sp);}
+  let tz=-1.2,tw=0.7;for(let i=0;i<5;i++){B(tw,tw*0.85,0.9,c.body,0,-0.05*i,tz-0.45);tz-=0.82;tw*=0.75;}
+  B(0.7,0.08,0.5,c.spike,0,-0.25,tz-0.2);
+  const wings=[-1,1].map(s=>{const p=new THREE.Group();p.position.set(s*0.5,0.4,0.4);g.add(p);B(2.9,0.13,0.18,c.body,s*1.45,0,0.4,p);B(2.9,0.04,1.9,c.wing,s*1.45,0,-0.55,p,std({color:c.wing,side:THREE.DoubleSide,roughness:0.7}));return {p,s};});
+  [-1,1].forEach(s=>[0.7,-0.7].forEach(z=>B(0.22,0.4,0.25,c.body,s*0.4,-0.6,z)));
+  g.userData={wings,head};return g;}
+function pteroM(){const g=new THREE.Group();const B=(w,h,dd,col,x,y,z,p,m)=>{const o=new THREE.Mesh(RB(w,h,dd),m||fur(col));o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o;};
+  B(0.48,0.42,1.0,0xb06a3a,0,0,0);const head=new THREE.Group();head.position.set(0,0.18,0.62);g.add(head);
+  B(0.3,0.3,0.42,0xb06a3a,0,0,0,head);B(0.12,0.1,0.95,0xd9b25a,0,-0.04,0.6,head,glossy(0xd9b25a));B(0.06,0.32,0.65,0xe0533a,0,0.22,-0.35,head);
+  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,6),glossy(0x1a0f0a));e.position.set(s*0.15,0.07,0.12);head.add(e);});
+  const wings=[-1,1].map(s=>{const p=new THREE.Group();p.position.set(s*0.22,0.1,0.1);g.add(p);B(2.3,0.08,0.1,0x8a4f2a,s*1.15,0,0.42,p);B(2.3,0.03,0.95,0xd98a50,s*1.15,0,0,p,std({color:0xd98a50,side:THREE.DoubleSide,roughness:0.7}));return {p,s};});
+  B(0.1,0.08,0.5,0xb06a3a,0,0,-0.7);g.userData={wings,head};return g;}
+Object.assign(ETYPES,{
+ trex:{n:'Tiranosaurio',hp:16,dmg:30,spd:6.2,aggro:22,s:2.2,rad:1.8,barY:5.9,reward:8,kind:'dino',fact:'El tiranosaurio rex vivió hace unos 68 millones de años. ¡Sus dientes eran tan grandes como plátanos!',make:()=>dinoBiped({body:0x46682a,belly:0xa8a070,stripes:0x2c4218})},
+ raptor:{n:'Velociraptor',hp:4,dmg:15,spd:8.6,aggro:18,s:1.05,rad:0.8,barY:2.6,reward:3,kind:'dino',fact:'El velociraptor de verdad era del tamaño de un pavo y tenía plumas.',make:()=>dinoBiped({body:0x8a6230,belly:0xd8c090,stripes:0x4a2e14,crest:0xd9533a})},
+ tricera:{n:'Triceratops',hp:12,dmg:20,spd:5.4,aggro:10,neutral:true,s:1.7,rad:1.6,barY:3.6,reward:5,kind:'dino',fact:'El triceratops solo comía plantas y usaba sus tres cuernos para defenderse.',make:()=>dinoQuad({body:0x5f7638,belly:0xa8a878,frill:0xd9733a,w:1.4,bh:1.2,len:2.6,legH:0.9,tail:3})},
+ braquio:{n:'Braquiosaurio',hp:99,dmg:0,spd:2.4,aggro:0,peaceful:true,s:2.4,rad:2.2,barY:12,reward:0,kind:'dino',fact:'El braquiosaurio era tan alto como un edificio de 4 pisos y comía las hojas de las copas de los árboles.',make:()=>dinoQuad({body:0x5f7a52,belly:0xa8b090,w:1.8,bh:2.0,len:4.5,legH:2.6,leg:0.6,neck:6,tail:5})},
+ ptero:{n:'Pterosaurio',hp:3,dmg:12,spd:16,aggro:30,s:1.3,rad:1.4,barY:1.6,reward:3,kind:'dino',fly:true,alt:24,flap:6,fact:'Los pterosaurios volaban, pero no eran dinosaurios: eran sus primos. Algunos eran tan grandes como una avioneta.',make:pteroM},
+ dragon:{n:'Dragón',hp:14,dmg:25,spd:14,aggro:45,s:2.2,rad:2.4,barY:3.4,reward:8,kind:'dragon',fly:true,alt:32,flap:3,fireCd:2.6,fact:'Los dragones son de leyenda, pero el dragón de Komodo existe: es el lagarto más grande del mundo y mide hasta 3 metros.',make:null},
+});
+function jurSpot(minCamp){for(let k=0;k<400;k++){const a=Math.PI+(rngE()-.5)*1.5,r=205+rngE()*185,x=Math.cos(a)*r,z=Math.sin(a)*r;if(!inJurassic(x,z))continue;if(Math.abs(r-RIV(Math.atan2(z,x)))<14)continue;if(CAMPS.some(c=>Math.hypot(x-c.x,z-c.z)<(minCamp||40)))continue;if(GIANTS.some(G=>Math.hypot(x-G.x,z-G.z)<22))continue;return [x,z];}return [-300,0];}
+for(let i=0;i<2;i++){const p=jurSpot(60);spawnEnemy('trex',p[0],p[1]);}
+for(let i=0;i<3;i++){const p=jurSpot();spawnEnemy('raptor',p[0],p[1]);spawnEnemy('raptor',p[0]+3,p[1]-2);}
+for(let i=0;i<4;i++){const p=jurSpot();spawnEnemy('tricera',p[0],p[1]);}
+for(let i=0;i<3;i++){const p=jurSpot(30);spawnEnemy('braquio',p[0],p[1]);}
+for(let i=0;i<6;i++){const p=i<5?jurSpot(30):wildSpot(false);spawnEnemy('ptero',p[0],p[1]);}
+[{h:VOLC[0],c:{body:0x9a2a1e,belly:0xe0a050,wing:0x5a1a14,spike:0x2a1a14}},{h:VOLC[2],c:{body:0x4a2f7a,belly:0xb89ae0,wing:0x2a1a4a,spike:0x1a1230}},{h:{x:-300,z:-20},c:{body:0x2f6a3a,belly:0xc8d890,wing:0x1f4a2a,spike:0x14301a}}].forEach(q=>{ETYPES.dragon.make=()=>dragonM(q.c);spawnEnemy('dragon',q.h.x,q.h.z);});
+enemies.forEach(e=>{if(e.T.fly)e.y=terrH(e.x,e.z)+e.T.alt;e.dive=0;e.angry=0;});
+const fires=[],fireGeo=new THREE.SphereGeometry(0.55,12,10),fireMat=new THREE.MeshBasicMaterial({color:0xffa030,toneMapped:false});
+function shootFire(e){const m=new THREE.Mesh(fireGeo,fireMat);const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xff6a00,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));gl.scale.set(3.5,3.5,1);m.add(gl);
+  const s=e.T.s,sx=e.x+Math.sin(e.rot)*3.2*s,sy=e.y+1.3*s,sz=e.z+Math.cos(e.rot)*3.2*s;
+  const v=new THREE.Vector3(P.x-sx,P.y+1-sy,P.z-sz).normalize().multiplyScalar(20);m.position.set(sx,sy,sz);scene.add(m);fires.push({m,v,t:4});tone(160,70,0.45,'sawtooth',0.06);}
+function flyerUpdate(e,dt,far,safeZone){
+  const T=e.T,u=e.o.userData;e.anim+=dt*(T.flap||5);
+  if(u.wings)u.wings.forEach(w=>{w.p.rotation.z=w.s*Math.sin(e.anim)*0.6;});
+  const ground=terrH(e.x,e.z);
+  if(e.state==='flee'){e.fleeT-=dt;e.y+=dt*15;e.x+=Math.sin(e.rot)*dt*20;e.z+=Math.cos(e.rot)*dt*20;e.o.scale.setScalar(T.s*Math.max(0.02,e.fleeT/1.2));e.ex.visible=false;e.o.position.set(e.x,e.y,e.z);if(e.fleeT<=0){e.state='dead';e.respawn=60;}return;}
+  const homeD=Math.hypot(e.x-e.home[0],e.z-e.home[1]),chase=!safeZone&&far<T.aggro&&homeD<130;e.ex.visible=chase;
+  let tx,ty,tz,spd;
+  if(chase&&T.kind==='dragon'){const ang=Math.atan2(e.x-P.x,e.z-P.z)+dt*0.5;tx=P.x+Math.sin(ang)*16;tz=P.z+Math.cos(ang)*16;ty=Math.max(P.y+7,ground+10);spd=T.spd;if(e.cd<=0&&far<36){e.cd=T.fireCd;shootFire(e);}}
+  else if(chase){if(e.dive>0){e.dive-=dt;tx=P.x;tz=P.z;ty=P.y+1;spd=T.spd*1.5;if(Math.hypot(e.x-P.x,e.z-P.z)<1.8&&Math.abs(e.y-(P.y+1))<2.2){hurt(T.dmg,e.x,e.z,T.n);e.dive=0;}}
+    else{const ang=e.anim*0.25;tx=P.x+Math.cos(ang)*14;tz=P.z+Math.sin(ang)*14;ty=Math.max(P.y+12,ground+14);spd=T.spd;if(e.cd<=0){e.dive=2.4;e.cd=4;}}}
+  else{e.orb=(e.orb||Math.random()*6)+dt*T.spd/32;tx=e.home[0]+Math.cos(e.orb)*30;tz=e.home[1]+Math.sin(e.orb)*30;ty=Math.max(terrH(tx,tz),ground)+T.alt;spd=T.spd*0.6;}
+  const dx=tx-e.x,dy=ty-e.y,dz=tz-e.z,d=Math.hypot(dx,dy,dz)||1;
+  if(d>0.2){const st=Math.min(d,spd*dt);e.x+=dx/d*st;e.y+=dy/d*st;e.z+=dz/d*st;}
+  if(chase&&T.kind==='dragon')e.rot=angLerp(e.rot,Math.atan2(P.x-e.x,P.z-e.z),dt*4);else if(Math.hypot(dx,dz)>0.3)e.rot=angLerp(e.rot,Math.atan2(dx,dz),dt*3);
+  e.y=Math.max(e.y,ground+2);e.o.position.set(e.x,e.y,e.z);e.o.rotation.order='YXZ';e.o.rotation.set(-Math.max(-0.5,Math.min(0.5,dy/d))*0.6,e.rot,0);
+  if(e.hp<T.hp){e.bar.visible=true;e.bf.scale.x=Math.max(0.01,e.hp/T.hp);e.bar.position.set(e.x,e.y+T.barY,e.z);e.bar.quaternion.copy(camera.quaternion);}
+}
+function dinoExtra(dt){
+  if(mode!=='play'||paused)return;
+  for(let i=fires.length-1;i>=0;i--){const f=fires[i];f.t-=dt;f.m.position.addScaledVector(f.v,dt);f.m.scale.setScalar(1+Math.sin(T*20)*0.1);
+    const dx=f.m.position.x-P.x,dy=f.m.position.y-(P.y+1),dz=f.m.position.z-P.z;
+    if(dx*dx+dy*dy+dz*dz<2.6){hurt(25,f.m.position.x,f.m.position.z,'Fuego de dragón');f.t=0;}
+    else if(f.m.position.y<terrH(f.m.position.x,f.m.position.z)){puff(f.m.position.x,f.m.position.y,f.m.position.z,6,0x8a8580);f.t=0;}
+    if(f.t<=0){scene.remove(f.m);fires.splice(i,1);}}
+  for(const e of enemies){if(e.state!=='alive'||killSeen[e.type])continue;if((e.T.peaceful||e.T.fly)&&Math.hypot(e.x-P.x,e.z-P.z)<(e.T.fly?40:18)){killSeen[e.type]=1;save();toast('¿Sabías que…? '+e.T.fact,6500);}}
+  if(!killSeen.giant&&GIANTS.some(G=>Math.hypot(P.x-G.x,P.z-G.z)<30)){killSeen.giant=1;save();toast('¿Sabías que…? Los árboles más altos del mundo son las secuoyas rojas: algunas superan los 110 metros. Este Árbol Gigante tiene ramas donde puedes aterrizar.',7000);}
 }
 
 /* ================= HUD ================= */
