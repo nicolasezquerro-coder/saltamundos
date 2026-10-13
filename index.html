@@ -657,13 +657,13 @@ CAMPS.forEach(c=>{const x=c.x,z=c.z,y=c.y;
 [[135,'Más allá de las montañas:\nTierras Salvajes'],[0,'Más allá de las montañas:\nTierra de Volcanes'],[-90,'Más allá de las montañas:\nel gran río']].forEach(q=>{const a=q[0]*Math.PI/180,x=Math.cos(a)*92,z=Math.sin(a)*92;const sg=label(q[1],{size:1.3,bg:'#fff6d6'});sg.position.set(x,terrH(x,z)+7,z);scene.add(sg);});
 
 /* ---------- más vegetación, Bosque Jurásico y árboles gigantes ---------- */
-const GIANTS=[{x:-330,z:70,H:88},{x:-280,z:-100,H:74},{x:-360,z:-30,H:80}];
+const GIANTS=[{x:-330,z:70,H:88},{x:-280,z:-100,H:74},{x:-360,z:-30,H:80},{x:-220,z:60,H:70},{x:-370,z:120,H:95},{x:-60,z:-330,H:78},{x:120,z:300,H:84}];
 const okWild=(x,z,cl)=>{const r=Math.hypot(x,z);if(r<186||r>400||inVolcano(x,z))return false;if(Math.abs(r-RIV(Math.atan2(z,x)))<(cl||12))return false;if(CAMPS.some(c=>Math.hypot(x-c.x,z-c.z)<16))return false;if(GIANTS.some(G=>Math.hypot(x-G.x,z-G.z)<15))return false;return true;};
 const cycadLeaf=std({color:0x3f8f3a,roughness:0.8,side:THREE.DoubleSide});
 function cycad(x,z,y,s){const tg=new THREE.CylinderGeometry(0.35*s,0.5*s,2.2*s,8);tg.translate(x,y+1.1*s,z);worldUV(tg,1.5);addStatic(tg,M.bark);
   for(let k=0;k<9;k++){const lg=new THREE.BoxGeometry(0.4*s,0.05*s,2.7*s);lg.translate(0,0,1.35*s);lg.rotateX(-0.3);lg.rotateY(k/9*6.28+s);lg.translate(x,y+2.2*s,z);addStatic(lg,cycadLeaf,false);}
   addSolid(x-0.4*s,y,z-0.4*s,x+0.4*s,y+2.2*s,z+0.4*s);}
-for(let i=0,n=0;i<5000&&n<330;i++){const a=R0()*6.28,r=186+R0()*214,x=Math.cos(a)*r,z=Math.sin(a)*r;if(!okWild(x,z,15))continue;const j=inJurassic(x,z);if(!j&&R0()<0.45)continue;const y=terrH(x,z);if(j&&R0()<0.45)cycad(x,z,y,0.9+R0()*0.7);else tree(x,z,y-0.1,(j?1.2:0.9)+R0()*0.8);n++;}
+for(let i=0,n=0;i<10000&&n<620;i++){const a=R0()*6.28,r=186+R0()*214,x=Math.cos(a)*r,z=Math.sin(a)*r;if(!okWild(x,z,15))continue;const j=inJurassic(x,z);if(!j&&R0()<0.45)continue;const y=terrH(x,z);if(j&&R0()<0.45)cycad(x,z,y,0.9+R0()*0.7);else tree(x,z,y-0.1,(j?1.2:0.9)+R0()*0.8);n++;}
 const giantBark=U(std({map:texBark,color:0x7a6450,bumpMap:texBark,bumpScale:0.08,roughness:1}),4);
 const giantLeaf=std({color:0x2f7a4a,flatShading:true,roughness:0.85});
 const glowA=new THREE.MeshBasicMaterial({color:0x5ff2ff,toneMapped:false}),glowB=new THREE.MeshBasicMaterial({color:0xd07bff,toneMapped:false});
@@ -672,7 +672,11 @@ GIANTS.forEach((G,gi)=>{const y=terrH(G.x,G.z),H=G.H,TH=H*0.86;G.y=y;G.top=TH;
   for(let i=0;i<p.count;i++){const yy=p.getY(i),ang=Math.atan2(p.getZ(i),p.getX(i)),k=1+0.09*Math.sin(ang*5+yy*0.12);p.setX(i,p.getX(i)*k);p.setZ(i,p.getZ(i)*k);}
   tg.computeVertexNormals();tg.translate(G.x,y+TH/2,G.z);worldUV(tg,4);addStatic(tg,giantBark);
   solids.push({t:'cyl',cx:G.x,cz:G.z,r:6.3,miny:y-1,maxy:y+TH-1.3,on:true});
-  for(let k=0;k<8;k++){const a=k/8*6.28+gi;const rg=new THREE.CylinderGeometry(0.6,2.2,15,8);rg.rotateZ(-1.0);rg.rotateY(-a);rg.translate(G.x+Math.cos(a)*7.5,y+2.6,G.z+Math.sin(a)*7.5);worldUV(rg,3);addStatic(rg,giantBark);}
+  for(let k=0;k<12;k++){const a=k/12*6.28+gi*0.7+R0()*0.25,reach=16+R0()*14,hh=9+R0()*9,seg=28,pts=[];
+    for(let t=0;t<=6;t++){const f=t/6,rr=5.5+f*reach,aa=a+f*(R0()-.5)*0.3,gx=G.x+Math.cos(aa)*rr,gz=G.z+Math.sin(aa)*rr,gy=terrH(gx,gz),w=(1-f)*(1-f);pts.push(new THREE.Vector3(gx,(y+hh)*w+gy*(1-w)+Math.sin(f*Math.PI)*3-f*0.8,gz));}
+    const curve=new THREE.CatmullRomCurve3(pts),tg2=new THREE.TubeGeometry(curve,seg,1,8,false),pp=tg2.attributes.position,cc=new THREE.Vector3(),vv=new THREE.Vector3();
+    for(let i=0;i<=seg;i++){curve.getPointAt(i/seg,cc);const rad=2.7*(1-i/seg)+0.55;for(let j=0;j<=8;j++){const idx=i*9+j;vv.fromBufferAttribute(pp,idx).sub(cc).multiplyScalar(rad).add(cc);pp.setXYZ(idx,vv.x,vv.y,vv.z);}}
+    tg2.computeVertexNormals();worldUV(tg2,3);addStatic(tg2,giantBark);}
   [0.38,0.6].forEach((f,k)=>{const a=k*2.3+gi,py=y+TH*f;const px=G.x+Math.cos(a)*11,pz=G.z+Math.sin(a)*11;addCyl(px,pz,4.2,py,1,M.plank,null);
     const bg=new THREE.CylinderGeometry(0.9,1.5,10,8);bg.rotateZ(Math.PI/2);bg.rotateY(-a);bg.translate(G.x+Math.cos(a)*6,py-0.7,G.z+Math.sin(a)*6);worldUV(bg,3);addStatic(bg,giantBark);});
   addCyl(G.x,G.z,8.5,y+TH,1.2,M.plank,null);
@@ -689,12 +693,13 @@ GIANTS.forEach((G,gi)=>{const y=terrH(G.x,G.z),H=G.H,TH=H*0.86;G.y=y;G.top=TH;
     for(let i=0;i<N*8&&k<N;i++){const a=R0()*6.28,r=186+R0()*214,x=Math.cos(a)*r,z=Math.sin(a)*r;if(!okWild(x,z,11)||!filter(x,z))continue;const y=terrH(x,z);const s=scaleFn(x,z);
       e.set(0,R0()*6.28,0);q.setFromEuler(e);sc.set(s,s*(0.8+R0()*0.4),s);pos.set(x,y+(yOff||0)*s,z);m4.compose(pos,q,sc);im.setMatrixAt(k,m4);im.setColorAt(k,colorFn(col));k++;}
     im.count=k;im.receiveShadow=true;scene.add(im);return im;};
-  place(1700,fernG,std({roughness:0.85,side:THREE.DoubleSide}),(x,z)=>inJurassic(x,z)||R0()<0.35,(x,z)=>inJurassic(x,z)?1.6+R0()*1.6:0.9+R0()*0.6,c=>c.setHSL(0.27+R0()*0.06,0.55,0.25+R0()*0.12));
+  place(2800,fernG,std({roughness:0.85,side:THREE.DoubleSide}),(x,z)=>inJurassic(x,z)||R0()<0.35,(x,z)=>inJurassic(x,z)?1.6+R0()*1.6:0.9+R0()*0.6,c=>c.setHSL(0.27+R0()*0.06,0.55,0.25+R0()*0.12));
   const bushG=new THREE.IcosahedronGeometry(1,1);bushG.scale(1,0.7,1);
-  place(950,bushG,std({flatShading:true,roughness:0.9}),()=>true,()=>0.7+R0()*1.1,c=>c.setHSL(0.25+R0()*0.08,0.5,0.22+R0()*0.12),0.45).castShadow=true;
+  place(1500,bushG,std({flatShading:true,roughness:0.9}),()=>true,()=>0.7+R0()*1.1,c=>c.setHSL(0.25+R0()*0.08,0.5,0.22+R0()*0.12),0.45).castShadow=true;
   const gl=[new THREE.CylinderGeometry(0.04,0.06,0.9,5).translate(0,0.45,0),new THREE.SphereGeometry(0.18,8,6).translate(0,0.95,0)].map(g=>g.index?g.toNonIndexed():g);
   const glowG=BU?BU.mergeBufferGeometries(gl):gl[1];
-  place(300,glowG,new THREE.MeshBasicMaterial({toneMapped:false}),(x,z)=>inJurassic(x,z),()=>0.8+R0()*1.2,c=>c.setHex([0x5ff2ff,0xd07bff,0xb6ff5f][Math.floor(R0()*3)]));
+  place(450,glowG,new THREE.MeshBasicMaterial({toneMapped:false}),(x,z)=>inJurassic(x,z)||R0()<0.1,()=>0.8+R0()*1.2,c=>c.setHex([0x5ff2ff,0xd07bff,0xb6ff5f][Math.floor(R0()*3)]));
+  place(1800,new THREE.IcosahedronGeometry(0.16,0),std({roughness:0.6}),()=>true,()=>0.8+R0()*0.8,c=>c.setHex([0xffffff,0xffd23f,0xff7fa8,0xb79be8,0xff6f4e][Math.floor(R0()*5)]),0.3);
   [[-300,40],[-250,-40],[-340,120]].forEach(n=>{const y=terrH(n[0],n[1]);const t=new THREE.TorusGeometry(1.4,0.5,8,18);t.rotateX(Math.PI/2);t.scale(1,0.6,1);t.translate(n[0],y+0.25,n[1]);addStatic(t,cm(0x7a5a3a,{roughness:1}));
     for(let k=0;k<4;k++){const g=new THREE.SphereGeometry(0.42,12,10);g.scale(1,1.3,1);g.translate(n[0]+Math.cos(k*1.6)*0.55,y+0.55,n[1]+Math.sin(k*1.6)*0.55);addStatic(g,cm(0xe8dcc0,{roughness:0.5}));}});
 }
@@ -1214,7 +1219,7 @@ function addPickup(kind,id,x,z){
   const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:kind==='h'?0xff6b8a:0xfff0a0,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0.7,toneMapped:false}));gl.scale.set(2.4,2.4,1);gl.position.set(x,y,z);scene.add(gl);
   pickups.push({kind,id,x,z,y,m,gl,taken:false,rt:0});}
 const rngE=rng(77);
-function wildSpot(vol,minCamp){for(let k=0;k<300;k++){const a=vol?(rngE()-.5)*1.45:rngE()*6.28,r=200+rngE()*190,x=Math.cos(a)*r,z=Math.sin(a)*r;if(inVolcano(x,z)!==vol)continue;if(Math.abs(r-RIV(Math.atan2(z,x)))<14)continue;if(CAMPS.some(c=>Math.hypot(x-c.x,z-c.z)<(minCamp||35)))continue;if(VOLC.some(V=>Math.hypot(x-V.x,z-V.z)<V.r*0.7))continue;return [x,z];}return [250,250];}
+function wildSpot(vol,minCamp){for(let k=0;k<300;k++){const a=vol?(rngE()-.5)*1.45:rngE()*6.28,r=200+rngE()*190,x=Math.cos(a)*r,z=Math.sin(a)*r;if(inVolcano(x,z)!==vol)continue;if(Math.abs(r-RIV(Math.atan2(z,x)))<14)continue;if(CAMPS.some(c=>Math.hypot(x-c.x,z-c.z)<(minCamp||35)))continue;if(VOLC.some(V=>Math.hypot(x-V.x,z-V.z)<V.r*0.7))continue;if(GIANTS.some(G=>Math.hypot(x-G.x,z-G.z)<30))continue;return [x,z];}return [250,250];}
 addPickup('w','espada',CAMPS[0].x+7,CAMPS[0].z-6);addPickup('w','hacha',CAMPS[1].x+7,CAMPS[1].z+6);addPickup('w','arco',-282,170);
 for(let i=0;i<10;i++){const p=wildSpot(i>=8,20);addPickup('h',null,p[0],p[1]);}
 for(let i=0;i<7;i++){const p=wildSpot(i>=5,20);addPickup('q',null,p[0],p[1]);}
@@ -1228,6 +1233,9 @@ function quad(d){const g=new THREE.Group(),body=new THREE.Group();g.add(body);co
   if(d.snout==='pig'){B(0.28,0.22,0.3,d.snoutC||d.body,0,-0.06,0.35,head);B(0.2,0.14,0.05,0x8a5050,0,-0.06,0.51,head,glossy(0x8a5050));}
   else{B(0.26,0.2,0.36,d.snoutC||d.body,0,-0.08,0.37,head);B(0.12,0.08,0.06,0x111111,0,0,0.55,head,glossy(0x111111));}
   if(d.tusks)[-1,1].forEach(s=>{const t=B(0.05,0.17,0.05,0xf3ead6,s*0.12,-0.04,0.5,head,cm(0xf3ead6,{roughness:0.4}));t.rotation.x=-0.5;});
+  if(d.antlers)[-1,1].forEach(s=>{const am=cm(0xd9c49a,{roughness:0.6});const a=B(0.06,0.62,0.06,0xd9c49a,s*0.16,0.5,-0.05,head,am);a.rotation.z=-s*0.35;const t1=B(0.05,0.3,0.05,0xd9c49a,s*0.27,0.62,0.1,head,am);t1.rotation.x=0.5;const t2=B(0.05,0.3,0.05,0xd9c49a,s*0.34,0.82,-0.06,head,am);t2.rotation.z=-s*0.8;});
+  if(d.horns)[-1,1].forEach(s=>{const h=B(0.09,0.3,0.09,0xe8e0d0,s*0.3,0.24,0,head,cm(0xe8e0d0,{roughness:0.4}));h.rotation.z=-s*1.0;});
+  if(d.hump)B(0.68,0.45,0.72,d.body,0,legY+H*0.72,L*0.22);
   const eg=new THREE.SphereGeometry(1,10,8);
   [-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.05);e.position.set(s*0.15,0.08,0.255);head.add(e);const br=B(0.15,0.04,0.03,0x2a1e16,s*0.15,0.16,0.25,head);br.rotation.z=s*-0.45;
     if(d.ears==='point'){const ea=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.24,4),fur(d.body));ea.position.set(s*0.16,0.31,-0.05);ea.rotation.y=Math.PI/4;head.add(ea);}
@@ -1236,11 +1244,11 @@ function quad(d){const g=new THREE.Group(),body=new THREE.Group();g.add(body);co
   [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(q=>{const pv=new THREE.Group();pv.position.set(q[0]*0.2,legY,q[1]*(L/2-0.18));body.add(pv);B(0.17,legY,0.19,d.leg||d.body,0,-legY/2,0,pv);legs.push(pv);});
   g.userData={legs,head,body,quad:true};return g;}
 const rockE=U(std({map:texRock,color:0x4a3f3b,roughness:0.95}),2),glowE=std({color:0xff7a1a,emissive:0xff5a00,emissiveIntensity:1.6});
-function golem(){const g=new THREE.Group(),legs=[],arms=[];const B=(w,h,d,m,x,y,z,p)=>{const o=new THREE.Mesh(RB(w,h,d,0.06),m);o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o;};
-  [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.32,0.9,0);g.add(pv);B(0.42,0.9,0.46,rockE,0,-0.45,0,pv);legs.push(pv);});
-  B(1.2,1.0,0.75,rockE,0,1.45,0);B(0.36,0.36,0.06,glowE,0,1.5,0.38);B(0.06,0.6,0.04,glowE,0.32,1.38,0.38);B(0.5,0.05,0.04,glowE,-0.18,1.2,0.38);B(0.05,0.4,0.04,glowE,-0.4,1.6,0.38);
-  const head=new THREE.Group();head.position.set(0,2.2,0.05);g.add(head);B(0.6,0.5,0.55,rockE,0,0,0,head);[-1,1].forEach(s=>B(0.13,0.07,0.04,glowE,s*0.14,0.04,0.28,head));
-  [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.8,1.85,0);g.add(pv);B(0.36,1.1,0.42,rockE,0,-0.55,0,pv);B(0.48,0.42,0.5,rockE,0,-1.2,0,pv);B(0.05,0.05,0.04,glowE,0,-1.2,0.26,pv);arms.push(pv);});
+function golem(rm,gm){rm=rm||rockE;gm=gm||glowE;const g=new THREE.Group(),legs=[],arms=[];const B=(w,h,d,m,x,y,z,p)=>{const o=new THREE.Mesh(RB(w,h,d,0.06),m);o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o;};
+  [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.32,0.9,0);g.add(pv);B(0.42,0.9,0.46,rm,0,-0.45,0,pv);legs.push(pv);});
+  B(1.2,1.0,0.75,rm,0,1.45,0);B(0.36,0.36,0.06,gm,0,1.5,0.38);B(0.06,0.6,0.04,gm,0.32,1.38,0.38);B(0.5,0.05,0.04,gm,-0.18,1.2,0.38);B(0.05,0.4,0.04,gm,-0.4,1.6,0.38);
+  const head=new THREE.Group();head.position.set(0,2.2,0.05);g.add(head);B(0.6,0.5,0.55,rm,0,0,0,head);[-1,1].forEach(s=>B(0.13,0.07,0.04,gm,s*0.14,0.04,0.28,head));
+  [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.8,1.85,0);g.add(pv);B(0.36,1.1,0.42,rm,0,-0.55,0,pv);B(0.48,0.42,0.5,rm,0,-1.2,0,pv);B(0.05,0.05,0.04,gm,0,-1.2,0.26,pv);arms.push(pv);});
   g.userData={legs,arms,head};return g;}
 function magmaBlob(){const g=new THREE.Group();const B=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(RB(w,h,d,0.12),m);o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;};
   B(0.95,0.85,0.95,rockE,0,0.45,0);[[0.3,0.6,0.48],[-0.25,0.35,0.48],[0.48,0.4,0.1],[-0.48,0.55,-0.2],[0,0.88,0.1]].forEach(p=>B(0.18,0.12,0.04,glowE,p[0],p[1],p[2]));
@@ -1351,6 +1359,7 @@ function combatUpdate(dt){
     if(e.state==='flee'){e.fleeT-=dt;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz)||1;tx=e.x+dx/d*10;tz=e.z+dz/d*10;spd=e.T.spd*1.3;e.o.scale.setScalar(e.T.s*Math.max(0.02,e.fleeT/1.2));e.ex.visible=false;if(e.fleeT<=0){e.state='dead';e.respawn=50;continue;}}
     else{const homeD=Math.hypot(e.x-e.home[0],e.z-e.home[1]);const chase=!e.T.peaceful&&(!e.T.neutral||e.angry>0)&&reach&&!safeZone&&far<(e.angry>0?40:e.T.aggro)&&homeD<55;e.ex.visible=chase;
       if(chase){tx=P.x;tz=P.z;spd=e.T.spd;if(far<1.1+e.T.rad&&e.cd<=0&&Math.abs(P.y-e.y)<2.5){e.cd=1.3;e.lunge=0.3;hurt(e.T.dmg,e.x,e.z,e.T.n);}if(far<0.8+e.T.rad)spd=0;}
+      else if(e.T.shy&&far<14){const ax=e.x-P.x,az=e.z-P.z,ad=Math.hypot(ax,az)||1;tx=e.x+ax/ad*12;tz=e.z+az/ad*12;spd=e.T.spd;}
       else if(homeD>55){tx=e.home[0];tz=e.home[1];spd=e.T.spd*0.8;}
       else{e.wait-=dt;if(e.wait<=0){const a=Math.random()*6.28,r=Math.random()*12;e.tx=e.home[0]+Math.cos(a)*r;e.tz=e.home[1]+Math.sin(a)*r;e.wait=3+Math.random()*4;}tx=e.tx;tz=e.tz;spd=e.T.spd*0.3;}
       if(e.hp<e.T.hp){e.bar.visible=true;e.bf.scale.x=Math.max(0.01,e.hp/e.T.hp);}}
@@ -1372,14 +1381,14 @@ function dinoBiped(d){const g=new THREE.Group(),legs=[],arms=[];const B=(w,h,dd,
   [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.32,1.05,0);g.add(pv);B(0.36,0.66,0.44,d.body,0,-0.25,0.05,pv);B(0.24,0.5,0.26,d.body,0,-0.75,-0.1,pv);B(0.34,0.1,0.52,0x3a3026,0,-1.0,0.1,pv);legs.push(pv);});
   const body=new THREE.Group();g.add(body);
   B(0.85,0.85,1.6,d.body,0,1.35,0,body);B(0.62,0.5,1.2,d.belly,0,1.1,0.1,body);
-  if(d.stripes)[-0.45,0,0.45].forEach(z=>B(0.87,0.12,0.14,d.stripes,0,1.62,z,body));
+  if(d.stripes)[-0.45,0,0.45].forEach(z=>B(0.87,0.12,0.14,d.stripes,0,1.62,z,body));if(d.sail)B(0.1,1.7,1.9,d.sail,0,2.5,0,body);
   let tz=-0.8,ty=1.35,tw=0.62;for(let i=0;i<4;i++){B(tw,tw*0.9,0.8,d.body,0,ty,tz-0.4,body);tz-=0.75;ty-=0.08;tw*=0.72;}
   B(0.56,0.62,0.6,d.body,0,1.78,0.85,body);
   const head=new THREE.Group();head.position.set(0,2.05,1.25);body.add(head);
   B(0.64,0.52,0.98,d.body,0,0,0.26,head);B(0.56,0.18,0.82,d.belly,0,-0.3,0.3,head);
-  for(let i=0;i<5;i++)[-1,1].forEach(s=>B(0.05,0.1,0.05,0xfaf6ea,s*0.25,-0.2,i*0.15,head,cm(0xfaf6ea,{roughness:0.4})));
+  if(!d.herb)for(let i=0;i<5;i++)[-1,1].forEach(s=>B(0.05,0.1,0.05,0xfaf6ea,s*0.25,-0.2,i*0.15,head,cm(0xfaf6ea,{roughness:0.4})));
   const eg=new THREE.SphereGeometry(1,10,8);[-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.07);e.position.set(s*0.31,0.12,0.2);head.add(e);B(0.16,0.05,0.04,0x2a1e16,s*0.3,0.22,0.2,head).rotation.z=s*-0.4;});
-  if(d.crest)B(0.08,0.26,0.62,d.crest,0,0.33,0.05,head);
+  if(d.crest)B(0.08,0.26,0.62,d.crest,0,0.33,0.05,head);if(d.tube){const tb=B(0.2,0.2,1.3,d.tube,0,0.45,-0.45,head);tb.rotation.x=-0.45;}
   [-1,1].forEach(s=>{const pv=new THREE.Group();pv.position.set(s*0.4,1.45,0.6);g.add(pv);B(0.12,0.4,0.12,d.body,0,-0.18,0.05,pv);arms.push(pv);});
   g.userData={legs,arms,head,body};return g;}
 function dinoQuad(d){const g=new THREE.Group(),body=new THREE.Group(),legs=[];g.add(body);const B=(w,h,dd,c,x,y,z,p,m)=>{const o=new THREE.Mesh(RB(w,h,dd),m||fur(c));o.position.set(x,y,z);o.castShadow=true;(p||body).add(o);return o;};
@@ -1388,13 +1397,16 @@ function dinoQuad(d){const g=new THREE.Group(),body=new THREE.Group(),legs=[];g.
   if(d.plates)for(let i=0;i<4;i++)B(0.1,0.4,0.5,d.plates,0,H+d.bh*0.95,-L/2+0.6+i*L/4.5);
   [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(q=>{const pv=new THREE.Group();pv.position.set(q[0]*d.w*0.36,H,q[1]*(L/2-0.45));body.add(pv);B(d.leg||0.45,H,(d.leg||0.45)+0.05,d.body,0,-H/2,0,pv);legs.push(pv);});
   let tz=-L/2,ty=H+d.bh*0.4,tw=d.w*0.55;for(let i=0;i<(d.tail||4);i++){B(tw,tw,1,d.body,0,ty,tz-0.45);tz-=0.9;ty-=0.12;tw*=0.74;}
+  if(d.club)B(0.9,0.55,0.7,d.armor||d.body,0,ty+0.1,tz-0.1);
+  if(d.tailSpikes)[-1,1].forEach(s=>[0,1].forEach(k=>{const c=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.75,6),cm(0xf3ead6,{roughness:0.4}));c.position.set(s*0.3,ty+0.25,tz+0.4+k*0.5);c.rotation.z=-s*1.1;c.castShadow=true;body.add(c);}));
+  if(d.armor)for(let i=0;i<10;i++){const c=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.38,5),fur(d.armor));c.position.set((i%2?1:-1)*d.w*0.42,H+d.bh*0.85,-L/2+0.4+Math.floor(i/2)*L/5);c.castShadow=true;body.add(c);}
   const head=new THREE.Group();body.add(head);const eg=new THREE.SphereGeometry(1,10,8);
   if(d.neck){let ny=H+d.bh*0.6,nz=L/2-0.2;for(let i=0;i<d.neck;i++){B(0.6,0.95,0.6,d.body,0,ny+0.4,nz+0.1);ny+=0.85;nz+=0.38;}
     head.position.set(0,ny+0.45,nz+0.35);B(0.6,0.48,0.85,d.body,0,0,0.1,head);
     [-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.07);e.position.set(s*0.3,0.1,0.2);head.add(e);});}
-  else{head.position.set(0,H+d.bh*0.5,L/2+0.5);B(0.95,0.82,1.0,d.body,0,0,0.2,head);B(1.9,1.5,0.18,d.frill,0,0.55,-0.25,head);
-    const hm=cm(0xf3ead6,{roughness:0.4});[[-0.3,0.42,0.55],[0.3,0.42,0.55]].forEach(p=>{const c=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.95,8),hm);c.position.set(p[0],p[1],p[2]);c.rotation.x=1.1;c.castShadow=true;head.add(c);});
-    const n=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.42,8),hm);n.position.set(0,0.12,0.85);n.rotation.x=1.2;head.add(n);B(0.42,0.3,0.32,0x5a4a3a,0,-0.2,0.75,head);
+  else{head.position.set(0,H+d.bh*0.5,L/2+0.5);B(0.95,0.82,1.0,d.body,0,0,0.2,head);if(d.frill)B(1.9,1.5,0.18,d.frill,0,0.55,-0.25,head);
+    const hm=cm(0xf3ead6,{roughness:0.4});(d.frill?[[-0.3,0.42,0.55],[0.3,0.42,0.55]]:[]).forEach(p=>{const c=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.95,8),hm);c.position.set(p[0],p[1],p[2]);c.rotation.x=1.1;c.castShadow=true;head.add(c);});
+    const n=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.42,8),hm);n.position.set(0,0.12,0.85);n.rotation.x=1.2;if(d.frill)head.add(n);B(0.42,0.3,0.32,0x5a4a3a,0,-0.2,0.75,head);
     [-1,1].forEach(s=>{const e=new THREE.Mesh(eg,glossy(0x1a0f0a));e.scale.setScalar(0.08);e.position.set(s*0.42,0.18,0.42);head.add(e);});}
   g.userData={legs,head,body,quad:true};return g;}
 function dragonM(c){const g=new THREE.Group();const B=(w,h,dd,col,x,y,z,p,m)=>{const o=new THREE.Mesh(RB(w,h,dd),m||fur(col));o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o;};
@@ -1435,7 +1447,7 @@ enemies.forEach(e=>{if(e.T.fly)e.y=terrH(e.x,e.z)+e.T.alt;e.dive=0;e.angry=0;});
 const fires=[],fireGeo=new THREE.SphereGeometry(0.55,12,10),fireMat=new THREE.MeshBasicMaterial({color:0xffa030,toneMapped:false});
 function shootFire(e){const m=new THREE.Mesh(fireGeo,fireMat);const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xff6a00,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));gl.scale.set(3.5,3.5,1);m.add(gl);
   const s=e.T.s,sx=e.x+Math.sin(e.rot)*3.2*s,sy=e.y+1.3*s,sz=e.z+Math.cos(e.rot)*3.2*s;
-  const v=new THREE.Vector3(P.x-sx,P.y+1-sy,P.z-sz).normalize().multiplyScalar(20);m.position.set(sx,sy,sz);scene.add(m);fires.push({m,v,t:4});tone(160,70,0.45,'sawtooth',0.06);}
+  const v=new THREE.Vector3(P.x-sx,P.y+1-sy,P.z-sz).normalize().multiplyScalar(20);m.position.set(sx,sy,sz);scene.add(m);fires.push({m,v,t:4,dmg:e.T.dmg,who:e.T.kind==='dragon'?'Fuego de dragón':e.T.n,s:e.T.kind==='dragon'?1:0.6});tone(160,70,0.45,'sawtooth',0.06);}
 function flyerUpdate(e,dt,far,safeZone){
   const T=e.T,u=e.o.userData;e.anim+=dt*(T.flap||5);
   if(u.wings)u.wings.forEach(w=>{w.p.rotation.z=w.s*Math.sin(e.anim)*0.6;});
@@ -1443,26 +1455,77 @@ function flyerUpdate(e,dt,far,safeZone){
   if(e.state==='flee'){e.fleeT-=dt;e.y+=dt*15;e.x+=Math.sin(e.rot)*dt*20;e.z+=Math.cos(e.rot)*dt*20;e.o.scale.setScalar(T.s*Math.max(0.02,e.fleeT/1.2));e.ex.visible=false;e.o.position.set(e.x,e.y,e.z);if(e.fleeT<=0){e.state='dead';e.respawn=60;}return;}
   const homeD=Math.hypot(e.x-e.home[0],e.z-e.home[1]),chase=!safeZone&&far<T.aggro&&homeD<130;e.ex.visible=chase;
   let tx,ty,tz,spd;
-  if(chase&&T.kind==='dragon'){const ang=Math.atan2(e.x-P.x,e.z-P.z)+dt*0.5;tx=P.x+Math.sin(ang)*16;tz=P.z+Math.cos(ang)*16;ty=Math.max(P.y+7,ground+10);spd=T.spd;if(e.cd<=0&&far<36){e.cd=T.fireCd;shootFire(e);}}
+  if(chase&&(T.kind==='dragon'||T.shooter)){const ang=Math.atan2(e.x-P.x,e.z-P.z)+dt*0.5;tx=P.x+Math.sin(ang)*16;tz=P.z+Math.cos(ang)*16;ty=Math.max(P.y+7,ground+10);spd=T.spd;if(T.breath&&e.cd<=0&&far<17){e.cd=T.fireCd+1.4;e.breath=1.4;e.bHit=false;}else if(e.cd<=0&&far<36){e.cd=T.fireCd;shootFire(e);}}
   else if(chase){if(e.dive>0){e.dive-=dt;tx=P.x;tz=P.z;ty=P.y+1;spd=T.spd*1.5;if(Math.hypot(e.x-P.x,e.z-P.z)<1.8&&Math.abs(e.y-(P.y+1))<2.2){hurt(T.dmg,e.x,e.z,T.n);e.dive=0;}}
     else{const ang=e.anim*0.25;tx=P.x+Math.cos(ang)*14;tz=P.z+Math.sin(ang)*14;ty=Math.max(P.y+12,ground+14);spd=T.spd;if(e.cd<=0){e.dive=2.4;e.cd=4;}}}
   else{e.orb=(e.orb||Math.random()*6)+dt*T.spd/32;tx=e.home[0]+Math.cos(e.orb)*30;tz=e.home[1]+Math.sin(e.orb)*30;ty=Math.max(terrH(tx,tz),ground)+T.alt;spd=T.spd*0.6;}
   const dx=tx-e.x,dy=ty-e.y,dz=tz-e.z,d=Math.hypot(dx,dy,dz)||1;
   if(d>0.2){const st=Math.min(d,spd*dt);e.x+=dx/d*st;e.y+=dy/d*st;e.z+=dz/d*st;}
-  if(chase&&T.kind==='dragon')e.rot=angLerp(e.rot,Math.atan2(P.x-e.x,P.z-e.z),dt*4);else if(Math.hypot(dx,dz)>0.3)e.rot=angLerp(e.rot,Math.atan2(dx,dz),dt*3);
-  e.y=Math.max(e.y,ground+2);e.o.position.set(e.x,e.y,e.z);e.o.rotation.order='YXZ';e.o.rotation.set(-Math.max(-0.5,Math.min(0.5,dy/d))*0.6,e.rot,0);
+  if(chase&&(T.kind==='dragon'||T.shooter))e.rot=angLerp(e.rot,Math.atan2(P.x-e.x,P.z-e.z),dt*4);else if(Math.hypot(dx,dz)>0.3)e.rot=angLerp(e.rot,Math.atan2(dx,dz),dt*3);
+  e.y=Math.max(e.y,ground+2);e.o.position.set(e.x,e.y,e.z);e.o.rotation.order='YXZ';e.o.rotation.set(-Math.max(-0.5,Math.min(0.5,dy/d))*0.6,e.rot,0);dragonFx(e,dt,far);
   if(e.hp<T.hp){e.bar.visible=true;e.bf.scale.x=Math.max(0.01,e.hp/T.hp);e.bar.position.set(e.x,e.y+T.barY,e.z);e.bar.quaternion.copy(camera.quaternion);}
 }
 function dinoExtra(dt){
-  if(mode!=='play'||paused)return;
-  for(let i=fires.length-1;i>=0;i--){const f=fires[i];f.t-=dt;f.m.position.addScaledVector(f.v,dt);f.m.scale.setScalar(1+Math.sin(T*20)*0.1);
+  if(mode!=='play'||paused)return;partsUpdate(dt);
+  for(let i=fires.length-1;i>=0;i--){const f=fires[i];f.t-=dt;f.m.position.addScaledVector(f.v,dt);f.m.scale.setScalar((f.s||1)*(1+Math.sin(T*20)*0.1));if(Math.random()<0.8)emit('f',f.m.position.x,f.m.position.y,f.m.position.z,(Math.random()-.5),(Math.random()-.5),(Math.random()-.5),0.45,1.1*(f.s||1),0.3);if(Math.random()<0.45)emit('s',f.m.position.x,f.m.position.y,f.m.position.z,0,1,0,1.4,0.7,2.4);
     const dx=f.m.position.x-P.x,dy=f.m.position.y-(P.y+1),dz=f.m.position.z-P.z;
-    if(dx*dx+dy*dy+dz*dz<2.6){hurt(25,f.m.position.x,f.m.position.z,'Fuego de dragón');f.t=0;}
+    if(dx*dx+dy*dy+dz*dz<2.6){hurt(f.dmg||25,f.m.position.x,f.m.position.z,f.who||'Fuego de dragón');f.t=0;}
     else if(f.m.position.y<terrH(f.m.position.x,f.m.position.z)){puff(f.m.position.x,f.m.position.y,f.m.position.z,6,0x8a8580);f.t=0;}
     if(f.t<=0){scene.remove(f.m);fires.splice(i,1);}}
   for(const e of enemies){if(e.state!=='alive'||killSeen[e.type])continue;if((e.T.peaceful||e.T.fly)&&Math.hypot(e.x-P.x,e.z-P.z)<(e.T.fly?40:18)){killSeen[e.type]=1;save();toast('¿Sabías que…? '+e.T.fact,6500);}}
   if(!killSeen.giant&&GIANTS.some(G=>Math.hypot(P.x-G.x,P.z-G.z)<30)){killSeen.giant=1;save();toast('¿Sabías que…? Los árboles más altos del mundo son las secuoyas rojas: algunas superan los 110 metros. Este Árbol Gigante tiene ramas donde puedes aterrizar.',7000);}
 }
+
+/* ================= fuego, humo y nuevas criaturas ================= */
+const FP=[],SP=[];let fpI=0,spI=0;
+for(let i=0;i<240;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xffa030,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,toneMapped:false}));sp.visible=false;scene.add(sp);FP.push({sp,life:0});}
+for(let i=0;i<180;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0x77706a,depthWrite:false,transparent:true,opacity:0}));sp.visible=false;scene.add(sp);SP.push({sp,life:0});}
+function emit(kind,x,y,z,vx,vy,vz,life,s0,s1){const p=kind==='f'?FP[fpI=(fpI+1)%FP.length]:SP[spI=(spI+1)%SP.length];p.sp.position.set(x,y,z);p.vx=vx;p.vy=vy;p.vz=vz;p.life=life;p.max=life;p.s0=s0;p.s1=s1;p.sp.visible=true;p.sp.scale.setScalar(s0);}
+function partsUpdate(dt){
+  for(const p of FP){if(p.life<=0)continue;p.life-=dt;if(p.life<=0){p.sp.visible=false;continue;}const t=1-p.life/p.max;p.sp.position.x+=p.vx*dt;p.sp.position.y+=p.vy*dt;p.sp.position.z+=p.vz*dt;p.sp.scale.setScalar(p.s0+(p.s1-p.s0)*t);p.sp.material.color.setRGB(1,Math.max(0.15,0.9-0.75*t),Math.max(0,0.35-0.4*t));p.sp.material.opacity=1-t*t;}
+  for(const p of SP){if(p.life<=0)continue;p.life-=dt;if(p.life<=0){p.sp.visible=false;continue;}const t=1-p.life/p.max;p.vy+=1.2*dt;p.sp.position.x+=p.vx*dt;p.sp.position.y+=p.vy*dt;p.sp.position.z+=p.vz*dt;p.sp.scale.setScalar(p.s0+(p.s1-p.s0)*t);p.sp.material.opacity=0.55*(1-t);}
+}
+const tmpM=new THREE.Vector3(),tmpN=new THREE.Vector3();
+function dragonFx(e,dt,far){
+  const T=e.T;if(T.kind!=='dragon'&&!T.shooter)return;if(far>140||e.state!=='alive')return;
+  if(e.o.userData.wisp){if(Math.random()<0.7)emit('f',e.x+(Math.random()-.5)*0.6,e.y+(Math.random()-.5)*0.6,e.z+(Math.random()-.5)*0.6,(Math.random()-.5),1.5+Math.random(),(Math.random()-.5),0.6,1.2,0.3);return;}
+  e.o.updateMatrixWorld(true);const mouth=e.o.userData.head.localToWorld(tmpM.set(0,-0.1,1.15));
+  e.smT=(e.smT||0)-dt;if(e.smT<=0){e.smT=0.2;const fx=Math.sin(e.rot),fz=Math.cos(e.rot);emit('s',mouth.x,mouth.y,mouth.z,fx*1.5+(Math.random()-.5),1.5,fz*1.5+(Math.random()-.5),2.2,0.8,4);if(Math.random()<0.4)emit('f',mouth.x,mouth.y,mouth.z,fx*2,0.5,fz*2,0.3,0.6,0.2);}
+  if(e.breath>0){e.breath-=dt;tmpN.set(P.x-mouth.x,P.y+1-mouth.y,P.z-mouth.z);const dist=tmpN.length();tmpN.normalize();
+    for(let k=0;k<4;k++)emit('f',mouth.x,mouth.y,mouth.z,tmpN.x*22+(Math.random()-.5)*4,tmpN.y*22+(Math.random()-.5)*4,tmpN.z*22+(Math.random()-.5)*4,0.75,1,3.6);
+    if(Math.random()<0.5)emit('s',mouth.x+tmpN.x*8,mouth.y+tmpN.y*8,mouth.z+tmpN.z*8,tmpN.x*6,2,tmpN.z*6,1.8,1.5,5);
+    if(!e.bHit&&dist<16){e.bHit=true;hurt(T.dmg,mouth.x,mouth.z,'Fuego de dragón');}
+    if(Math.random()<0.15)tone(120,60,0.3,'sawtooth',0.05);}
+}
+function wispM(){const g=new THREE.Group();const core=new THREE.Mesh(new THREE.SphereGeometry(0.55,14,12),new THREE.MeshBasicMaterial({color:0xffb040,toneMapped:false}));g.add(core);
+  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xff5a00,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));gl.scale.set(4,4,1);g.add(gl);
+  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),new THREE.MeshBasicMaterial({color:0x2a0a00}));e.position.set(s*0.2,0.12,0.5);g.add(e);});g.userData={wisp:true};return g;}
+const mossRock=U(std({map:texRock,color:0x4f6e3a,roughness:0.95}),2),mossGlow=std({color:0x9dff6a,emissive:0x5fe040,emissiveIntensity:1.4});
+ETYPES.dragon.breath=true;
+Object.assign(ETYPES,{
+ ciervo:{n:'Ciervo',hp:99,dmg:0,spd:9,aggro:0,peaceful:true,shy:true,s:1.1,rad:0.8,barY:2.2,reward:0,kind:'animal',fact:'Los ciervos cambian de cuernos cada año: se les caen al final del invierno y les vuelven a crecer.',d:{body:0xa0703f,belly:0xe8d2b0,ears:'point',tail:'thin',len:1.3,h:1.05,snoutC:0xc8a070,antlers:true}},
+ bisonte:{n:'Bisonte',hp:12,dmg:20,spd:6,aggro:10,neutral:true,s:1.6,rad:1.2,barY:2.6,reward:4,kind:'animal',fact:'El bisonte europeo es el mamífero terrestre más grande de Europa: puede pesar casi una tonelada.',d:{body:0x4a3424,ears:'small',tail:'thin',len:1.4,h:0.95,snoutC:0x3a281a,horns:true,hump:true}},
+ puma:{n:'Puma',hp:6,dmg:15,spd:8.2,aggro:15,s:1.1,rad:0.8,barY:1.8,reward:3,kind:'animal',fact:'El puma es un gran saltador: puede subir de un salto a la rama de un árbol muy alto.',d:{body:0xc29a62,belly:0xf0e2c8,ears:'round',tail:'thin',len:1.4,h:0.8,snoutC:0xe8d6b0}},
+ stego:{n:'Estegosaurio',hp:12,dmg:20,spd:5,aggro:10,neutral:true,s:1.6,rad:1.6,barY:3.8,reward:5,kind:'dino',fact:'El estegosaurio era tan largo como un autobús, ¡pero tenía un cerebro del tamaño de una nuez!',make:()=>dinoQuad({body:0x6f7f42,belly:0xb0b080,plates:0xd9733a,w:1.3,bh:1.3,len:3.0,legH:1.0,tail:4,tailSpikes:true})},
+ anky:{n:'Anquilosaurio',hp:14,dmg:20,spd:4.6,aggro:9,neutral:true,s:1.5,rad:1.6,barY:3,reward:5,kind:'dino',fact:'El anquilosaurio tenía una armadura de placas y una cola con una maza de hueso para defenderse.',make:()=>dinoQuad({body:0x7a6a4a,belly:0xb8a880,armor:0x4a3a2a,club:true,w:1.6,bh:0.9,len:2.6,legH:0.7,tail:4})},
+ spino:{n:'Espinosaurio',hp:16,dmg:30,spd:6,aggro:20,s:2.3,rad:1.9,barY:7,reward:8,kind:'dino',fact:'El espinosaurio era aún más largo que el tiranosaurio y pescaba en los ríos.',make:()=>dinoBiped({body:0x5a6a7a,belly:0xb8c0c0,stripes:0x3a4656,sail:0xd9733a})},
+ parasaur:{n:'Parasaurolophus',hp:99,dmg:0,spd:6,aggro:0,peaceful:true,shy:true,s:1.6,rad:1.4,barY:4,reward:0,kind:'dino',fact:'El parasaurolophus usaba la cresta hueca de su cabeza como una trompeta para llamar a su manada.',make:()=>dinoBiped({body:0x6a8a5a,belly:0xd8d0a0,stripes:0x4a6a3a,tube:0xe0a040,herb:true})},
+ compy:{n:'Compsognathus',hp:2,dmg:10,spd:8.8,aggro:14,s:0.55,rad:0.5,barY:1.5,reward:1,kind:'dino',fact:'El compsognathus era un dinosaurio diminuto, del tamaño de una gallina.',make:()=>dinoBiped({body:0x6a9a4a,belly:0xd8e0a0,stripes:0x3a5a2a})},
+ quetzal:{n:'Quetzalcoatlus',hp:5,dmg:15,spd:18,aggro:34,s:2.4,rad:2,barY:2.4,reward:4,kind:'dino',fly:true,alt:36,flap:3.5,fact:'El quetzalcoatlus fue uno de los animales voladores más grandes de la historia: sus alas medían como una avioneta.',make:pteroM},
+ espiritu:{n:'Espíritu de fuego',hp:3,dmg:15,spd:10,aggro:30,s:1,rad:1,barY:1.4,reward:3,kind:'monster',fly:true,alt:10,shooter:true,fireCd:2.2,fact:'El fuego necesita tres cosas para existir: calor, combustible y el oxígeno del aire.',make:wispM},
+ musgo:{n:'Gólem de musgo',hp:12,dmg:25,spd:4.4,aggro:16,s:1.25,rad:1.3,barY:3.3,reward:5,kind:'monster',fact:'Los musgos son plantas muy antiguas: no tienen flores ni semillas y se reproducen con esporas.',make:()=>golem(mossRock,mossGlow)},
+});
+const sp2=(f,t,n,dx,dz)=>{for(let i=0;i<n;i++){const p=f();spawnEnemy(t,p[0]+(dx||0)*i,p[1]+(dz||0)*i);}};
+for(let h=0;h<3;h++){const p=wildSpot(false);for(let i=0;i<3;i++)spawnEnemy('ciervo',p[0]+i*3,p[1]+(i%2)*3);}
+sp2(()=>wildSpot(false),'bisonte',5);sp2(()=>wildSpot(false),'puma',4);
+sp2(()=>jurSpot(),'stego',3);sp2(()=>jurSpot(),'anky',3);sp2(()=>jurSpot(60),'spino',2);
+for(let h=0;h<2;h++){const p=jurSpot();for(let i=0;i<3;i++)spawnEnemy('parasaur',p[0]+i*4,p[1]+(i%2)*4);}
+for(let h=0;h<3;h++){const p=jurSpot();for(let i=0;i<4;i++)spawnEnemy('compy',p[0]+i*1.5,p[1]+(i%2)*1.5);}
+sp2(()=>jurSpot(30),'ptero',5);sp2(()=>jurSpot(30),'quetzal',3);
+sp2(()=>wildSpot(true,30),'espiritu',6);sp2(()=>wildSpot(true,30),'magma',5);
+VOLC.forEach(V=>{const a=Math.atan2(-V.z,-V.x)+1.2,x=V.x+Math.cos(a)*(V.r+10),z=V.z+Math.sin(a)*(V.r+10);spawnEnemy('golem',x,z);});
+sp2(()=>jurSpot(),'musgo',3);sp2(()=>wildSpot(false),'musgo',2);
+enemies.forEach(e=>{if(e.dive===undefined){if(e.T.fly)e.y=terrH(e.x,e.z)+e.T.alt;e.dive=0;e.angry=0;}});
 
 /* ================= HUD ================= */
 function toast(t,ms){const d=document.createElement('div');d.className='toast blk';d.textContent=t;$('toasts').appendChild(d);setTimeout(()=>d.remove(),ms||2600);while($('toasts').children.length>3)$('toasts').firstChild.remove();}
