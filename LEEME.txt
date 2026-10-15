@@ -1,2 +1,6 @@
 Sube TODOS estos archivos a la raíz del repositorio saltamundos (Add file > Upload files > Commit changes).
-Todos van sueltos, sin carpetas.
+Todos van sueltos, sin carpetas. Son 46 archivos (incluye los modelos .glb de los animales).
+
+Créditos de los modelos 3D (licencia CC0, dominio público):
+- Quaternius (quaternius.com): dinosaurios, dragón, granja, lobo, gato, águila, murciélago, humano animado.
+- OpenGameArt.org: elefante, jabalí, cocodrilo y pájaro.
