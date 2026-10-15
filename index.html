@@ -383,7 +383,7 @@ function addCyl(cx,cz,r,top,thick,m,under){
 function inXZ(s,x,z,r){if(s.t==='box')return x>s.minx-r&&x<s.maxx+r&&z>s.minz-r&&z<s.maxz+r;return Math.hypot(x-s.cx,z-s.cz)<s.r+r;}
 const PH=1.9,PR=0.42;
 const RIV=a=>268+24*Math.sin(3*a)+10*Math.sin(5*a+1);
-const VOLC=[{x:340,z:-30,h:62,r:60,cr:9},{x:205,z:125,h:40,r:38,cr:6},{x:300,z:-140,h:48,r:50,cr:7}];
+const VOLC=[{x:340,z:-30,h:62,r:60,cr:9},{x:205,z:125,h:40,r:38,cr:6},{x:300,z:-140,h:48,r:50,cr:7},{x:370,z:75,h:46,r:36,cr:6},{x:385,z:-95,h:38,r:30,cr:5}];
 function inVolcano(x,z){return Math.hypot(x,z)>185&&Math.abs(Math.atan2(z,x))<0.75;}
 function inJurassic(x,z){const r=Math.hypot(x,z);return r>186&&r<400&&Math.abs(Math.atan2(z,x))>Math.PI-0.8;}
 function terrRaw(x,z){
@@ -748,6 +748,46 @@ const ringSign=label('¡Aros arcoíris!\nVuela a través de ellos',{size:1.1,bg:
 
 /* ---------- río, lava, cráteres, campamentos y puentes ---------- */
 const texLava=makeTex(128,(x,s)=>{x.fillStyle='#8a1f08';x.fillRect(0,0,s,s);for(let i=0;i<320;i++){x.fillStyle=['#ff6a00','#ffb300','#ff3d00','#ffd54f','#5a1205'][i%5];x.globalAlpha=0.45+R0()*0.55;blot(x,s,s,R0()*s,R0()*s,2+R0()*7);}x.globalAlpha=1;});
+/* Lava realista: costra negra que se rompe en placas, grietas incandescentes y canal central más caliente */
+const LAVAU={uT:{value:0},uSun:{value:new THREE.Vector3(0.45,0.78,0.35).normalize()}};
+const LAVA_VS=`varying vec2 vUv;varying vec3 vW;
+#include <fog_pars_vertex>
+void main(){vUv=uv;vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vec4 mvPosition=viewMatrix*w;gl_Position=projectionMatrix*mvPosition;
+#include <fog_vertex>
+}`;
+const LAVA_FS=`uniform float uT,uFront,uAge,uLen,uVS,uFlow;uniform vec3 uSun;varying vec2 vUv;varying vec3 vW;
+#include <common>
+#include <fog_pars_fragment>
+float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1.,0.)),f.x),mix(hh(i+vec2(0.,1.)),hh(i+vec2(1.,1.)),f.x),f.y);}
+float fb(vec2 p){float s=0.,a=.5;for(int i=0;i<OCT;i++){s+=vn(p)*a;p*=2.03;a*=.5;}return s;}
+float cel(vec2 p){vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y));vec2 o=vec2(hh(i+g),hh(i+g+17.3));vec2 r=g+o-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d;}return sqrt(d2)-sqrt(d1);}
+void main(){
+ float v=vUv.y*uVS,edge=abs(vUv.x-.5)*2.;
+ float nz=fb(vec2(vUv.x*3.,v*.35));
+ float front=uFront-v;if(front<(nz-.5)*3.)discard;
+ if(edge>0.8+nz*0.3)discard;
+ if(uAge>1.&&hh(gl_FragCoord.xy*0.37)<uAge-1.)discard;
+ float k=clamp(v/max(uLen,1.),0.,1.);
+ float fl=v-uT*uFlow*mix(1.5,0.3,k)*(1.-min(uAge,1.));
+ vec2 cp=vec2(vUv.x*3.5,fl*.5);
+ float cr=cel(cp*(1.0+0.5*vn(cp*0.21))+fb(cp*0.7)*1.2);
+ float age=min(uAge,1.);
+ float crack=1.-smoothstep(0.02,0.08+0.14*(1.-age),cr);
+ float heat=(1.-age)*(1.-edge*0.75)*(0.55+0.45*smoothstep(0.,7.,front))*(1.-0.35*k);
+ float crust=smoothstep(0.42,0.72,nz+age*0.75+edge*0.55+k*0.12-0.3*(1.-k)*(1.-age));
+ float glow=max(crack*(0.35+heat*1.2)*(1.-age*0.85),(1.-crust)*heat*1.5);
+ glow*=0.8+0.2*sin(uT*2.5+v*.6+nz*7.);
+ vec3 hot=mix(vec3(0.55,0.03,0.0),vec3(1.0,0.38,0.03),clamp(glow,0.,1.));
+ hot=mix(hot,vec3(1.7,1.15,0.45),clamp(glow-0.75,0.,1.)*2.);
+ vec3 N=normalize(cross(dFdx(vW),dFdy(vW)));if(N.y<0.)N=-N;float L=max(dot(N,uSun),0.)*0.9+0.22;
+ vec3 rock=vec3(0.05,0.04,0.037)*(0.6+0.8*fb(cp*2.7))*L;
+ gl_FragColor=vec4(rock+hot*glow*2.0,1.);
+ #include <encodings_fragment>
+ #include <fog_fragment>
+}`;
+function lavaMat(o){o=o||{};const m=new THREE.ShaderMaterial({uniforms:THREE.UniformsUtils.merge([THREE.UniformsLib.fog,{uFront:{value:o.front!==undefined?o.front:1e6},uAge:{value:o.age||0},uLen:{value:o.len||1},uVS:{value:o.vs||1},uFlow:{value:o.flow!==undefined?o.flow:1}}]),defines:{OCT:hiQ?4:2},vertexShader:LAVA_VS,fragmentShader:LAVA_FS,fog:true,side:THREE.DoubleSide});
+  m.uniforms.uT=LAVAU.uT;m.uniforms.uSun=LAVAU.uSun;m.extensions.derivatives=true;m.toneMapped=false;return m;}
 const lavaM=new THREE.MeshStandardMaterial({color:0x330a00,map:texLava,emissive:0xffffff,emissiveMap:texLava,emissiveIntensity:1.15,roughness:0.6,side:THREE.DoubleSide,toneMapped:false});
 {
   const N=520,wp=[],wu=[],lp=[],lu=[];
@@ -756,11 +796,11 @@ const lavaM=new THREE.MeshStandardMaterial({color:0x330a00,map:texLava,emissive:
     const A=pt(a0,-9),B=pt(a0,9),Cc=pt(a1,-9),D=pt(a1,9),y=lava?4.6:4.4,v0=i*0.3,v1=(i+1)*0.3,arr=lava?lp:wp,uu=lava?lu:wu;
     arr.push(A[0],y,A[1],Cc[0],y,Cc[1],B[0],y,B[1],B[0],y,B[1],Cc[0],y,Cc[1],D[0],y,D[1]);uu.push(0,v0,0,v1,1,v0,1,v0,0,v1,1,v1);}
   const mk=(pp,uu,m)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pp,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uu,2));g.computeVertexNormals();const me=new THREE.Mesh(g,m);me.receiveShadow=true;scene.add(me);return me;};
-  mk(wp,wu,waterMaterial(3));mk(lp,lu,lavaM);
+  mk(wp,wu,waterMaterial(3));mk(lp,lu,lavaMat({vs:10,flow:1.2,age:0.12}));
 }
 const smokes=[];
-VOLC.forEach(V=>{V.ly=terrH(V.x,V.z)+1.2;const g=new THREE.CircleGeometry(V.cr*0.9,32);g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,lavaM);m.position.set(V.x,V.ly,V.z);scene.add(m);
-  for(let i=0;i<9;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0x8a8580,transparent:true,depthWrite:false,opacity:0.5}));scene.add(sp);smokes.push({sp,V,t:i/9});}});
+VOLC.forEach(V=>{V.ly=terrH(V.x,V.z)+1.2;const g=new THREE.CircleGeometry(V.cr*0.9,40);const p=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<p.count;i++)uv.setXY(i,0.5+p.getX(i)/(V.cr*0.9)*0.3,(p.getY(i)+V.cr)/V.cr*4);g.rotateX(-Math.PI/2);
+  const m=new THREE.Mesh(g,lavaMat({vs:V.cr/4,flow:0.35}));m.position.set(V.x,V.ly,V.z);scene.add(m);V.e=-1;V.next=20+Math.random()*40;});
 CAMPS.forEach(c=>{const x=c.x,z=c.z,y=c.y;
   const sh=new THREE.Shape();sh.moveTo(-1.8,0);sh.lineTo(1.8,0);sh.lineTo(0,2.4);sh.closePath();const tg=new THREE.ExtrudeGeometry(sh,{depth:3.4,bevelEnabled:false});tg.translate(x+4,y,z+3-1.7);worldUV(tg,2);addStatic(tg,cm(0xe8833a,{roughness:0.8}));
   addSolid(x+2.3,y,z+1.4,x+5.7,y+2,z+4.6);
@@ -1403,7 +1443,7 @@ function flyCamera(dt){
   const k=snapCam?1:1-Math.pow(0.015,dt);snapCam=false;
   camPos.lerp(fcPos,k);
   tmpV.set(P.x+Math.sin(P.rot)*6,P.y+0.8+Math.sin(P.pitch)*4,P.z+Math.cos(P.rot)*6);flook.lerp(tmpV,1-Math.pow(0.002,dt));
-  camera.position.copy(camPos);camera.lookAt(flook);
+  camera.position.copy(camPos);camera.lookAt(flook);if(shakeA>0.01){camera.position.x+=(Math.random()-.5)*shakeA;camera.position.y+=(Math.random()-.5)*shakeA;}
   const fov=62+Math.max(0,Math.min(14,(P.flySpd-16)*0.7));if(Math.abs(camera.fov-fov)>0.05){camera.fov+=(fov-camera.fov)*Math.min(1,dt*3);camera.updateProjectionMatrix();}
 }
 const SN=110,streakG=new THREE.BufferGeometry();{const a=new Float32Array(SN*3);for(let i=0;i<SN;i++){a[i*3]=(Math.random()-.5)*30;a[i*3+1]=(Math.random()-.5)*14;a[i*3+2]=(Math.random()-.5)*30;}streakG.setAttribute('position',new THREE.BufferAttribute(a,3));}
@@ -1436,7 +1476,7 @@ const REG={jur:{n:'Bosque Jurásico',fact:'Hace millones de años la Tierra esta
 const WEAP={espada:{n:'Espada',dmg:2,rng:2.6,cd:0.38,dot:0.15,dur:0.3},hacha:{n:'Hacha',dmg:4,rng:2.9,cd:0.7,dot:-0.25,dur:0.45},arco:{n:'Arco',dmg:2,cd:0.5,dur:0.35}};
 const WICON={espada:'<path d="M19 4L8.5 14.5M6 12.5l5.5 5.5M4 20l3.5-3.5M14 4h5v5"/>',hacha:'<path d="M5 20L15.5 9.5M12 5c4 0 7.5 3 7.5 7.5L14 11.5z"/>',arco:'<path d="M6 3c8 2 13 7 15 15M6 3l15 15M4 11l7-7"/>'};
 function inRiver(x,z,y){const r=Math.hypot(x,z);return r>200&&!inVolcano(x,z)&&Math.abs(r-RIV(Math.atan2(z,x)))<9&&y<4.4;}
-function lavaAt(x,z){if(!inVolcano(x,z))return null;const r=Math.hypot(x,z);if(Math.abs(r-RIV(Math.atan2(z,x)))<9)return 4.6;for(const V of VOLC)if(Math.hypot(x-V.x,z-V.z)<V.cr*0.9)return V.ly;return null;}
+function lavaAt(x,z){if(!inVolcano(x,z))return null;const r=Math.hypot(x,z);if(Math.abs(r-RIV(Math.atan2(z,x)))<9)return 4.6;for(const V of VOLC)if(Math.hypot(x-V.x,z-V.z)<V.cr*0.9)return V.ly;return flowAt(x,z);}
 function makeWeapon(id){const g=new THREE.Group(),met=std({color:0xd8dde6,metalness:0.9,roughness:0.25,envMap:envTex}),wood=cm(0x8a5a33,{roughness:0.7}),gold=std({color:0xffc83a,metalness:1,roughness:0.3,envMap:envTex});
   const add=(geo,m,x,y,z)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;};
   if(id==='espada'){add(new THREE.BoxGeometry(0.1,0.95,0.035),met,0,0.62,0);const tp=add(new THREE.ConeGeometry(0.07,0.16,4),met,0,1.17,0);tp.rotation.y=Math.PI/4;add(new THREE.BoxGeometry(0.36,0.07,0.09),gold,0,0.13,0);add(new THREE.CylinderGeometry(0.035,0.035,0.24,8),wood,0,0,0);}
@@ -1597,14 +1637,82 @@ function rigEnemy(e,mv,spd,dt,far){const r=e.o.userData.rig;if(!e.o.visible)retu
   const k=RIGCFG[r.key].ts;if(k&&k[st])ts*=k[st];
   if(far>45){e.skipF=!e.skipF;if(e.skipF)return;dt*=2;}
   rigTick(e.o,dt,st,ts);}
+/* ================= volcanes: humo, erupciones, bombas y coladas ================= */
+const texSmoke=makeTex(128,(x,s)=>{for(let i=0;i<16;i++){const cx=s*(0.3+R0()*0.4),cy=s*(0.3+R0()*0.4),r=s*(0.14+R0()*0.18);const g=x.createRadialGradient(cx,cy,0,cx,cy,r);g.addColorStop(0,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,s,s);}});
+const ASH=[],SPAT=[];let ashI=0,spI2=0,shakeA=0,erSeen=false;
+for(let i=0;i<260;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texSmoke,color:0x6e6862,transparent:true,depthWrite:false,opacity:0}));sp.visible=false;scene.add(sp);ASH.push({sp,life:0});}
+for(let i=0;i<170;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xffa030,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,toneMapped:false}));sp.visible=false;scene.add(sp);SPAT.push({sp,life:0});}
+function ash(x,y,z,vx,vy,vz,life,s0,s1,op,col){const p=ASH[ashI=(ashI+1)%ASH.length];p.sp.position.set(x,y,z);p.vx=vx;p.vy=vy;p.vz=vz;p.life=life;p.max=life;p.s0=s0;p.s1=s1;p.op=op;p.rs=(Math.random()-.5)*0.4;p.sp.material.color.setHex(col||0x6e6862);p.sp.material.rotation=Math.random()*6;p.sp.visible=true;p.sp.scale.setScalar(s0);}
+function spat(x,y,z,vx,vy,vz,life,s){const p=SPAT[spI2=(spI2+1)%SPAT.length];p.sp.position.set(x,y,z);p.vx=vx;p.vy=vy;p.vz=vz;p.life=life;p.max=life;p.s=s;p.sp.visible=true;p.sp.scale.setScalar(s);}
+const BOMBS=[],bombG=new THREE.DodecahedronGeometry(0.55,0);
+for(let i=0;i<26;i++){const mat=new THREE.MeshStandardMaterial({color:0x1a1210,roughness:0.9,emissive:0xff5a10,emissiveIntensity:2,toneMapped:false});const m=new THREE.Mesh(bombG,mat);m.castShadow=true;m.visible=false;
+  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:texGlow,color:0xff7a20,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,toneMapped:false}));gl.scale.setScalar(3);m.add(gl);scene.add(m);BOMBS.push({m,gl,st:0});}
+const volcLight=hiQ?new THREE.PointLight(0xff5a1a,0,220,1.6):null;if(volcLight)scene.add(volcLight);
+const FLOWS=[];
+function flowPath(V,ang){const pts=[];let x=V.x+Math.cos(ang)*V.cr*1.05,z=V.z+Math.sin(ang)*V.cr*1.05,dx=Math.cos(ang),dz=Math.sin(ang),len=0,flat=0;
+  for(let i=0;i<110;i++){const e=0.9,gx=(terrH(x+e,z)-terrH(x-e,z))/(2*e),gz=(terrH(x,z+e)-terrH(x,z-e))/(2*e),gl=Math.hypot(gx,gz);pts.push({x,z,l:len});
+    if(gl>0.03){dx=dx*0.6-gx/gl*0.4;dz=dz*0.6-gz/gl*0.4;}else flat++;
+    dx+=(Math.random()-.5)*0.3;dz+=(Math.random()-.5)*0.3;const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;x+=dx*1.5;z+=dz*1.5;len+=1.5;
+    const r=Math.hypot(x,z);if(flat>8||Math.hypot(x-V.x,z-V.z)>V.r*1.25||CAMPS.some(c=>Math.hypot(x-c.x,z-c.z)<24)||Math.abs(r-RIV(Math.atan2(z,x)))<10||!inVolcano(x,z))break;}
+  return {pts,len};}
+function makeFlow(V,ang){const {pts,len}=flowPath(V,ang);if(pts.length<8)return null;const K=9,pos=[],uv=[],idx=[];
+  for(let i=0;i<pts.length;i++){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const tl=Math.hypot(tx,tz)||1;tx/=tl;tz/=tl;
+    const k=pts[i].l/len,w=3.2+5*k+(k>0.85?(k-0.85)*20:0)+Math.sin(i*0.7)*0.6;pts[i].w=w;
+    for(let j=0;j<K;j++){const u=j/(K-1),sx=(u-0.5)*2,x=pts[i].x-tz*sx*w/2,z=pts[i].z+tx*sx*w/2;pos.push(x,terrH(x,z)+0.12+(0.25+0.6*k)*(1-sx*sx),z);uv.push(u,pts[i].l);}}
+  for(let i=0;i<pts.length-1;i++)for(let j=0;j<K-1;j++){const a=i*K+j,b=a+1,c=a+K,d=c+1;idx.push(a,c,b,b,c,d);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeBoundingSphere();
+  const mat=lavaMat({front:0,len,flow:1});const mesh=new THREE.Mesh(g,mat);mesh.frustumCulled=false;scene.add(mesh);
+  let mnx=1e9,mxx=-1e9,mnz=1e9,mxz=-1e9;pts.forEach(p=>{mnx=Math.min(mnx,p.x-p.w);mxx=Math.max(mxx,p.x+p.w);mnz=Math.min(mnz,p.z-p.w);mxz=Math.max(mxz,p.z+p.w);});
+  return {mesh,mat,pts,len,t:0,V,front:0,box:[mnx,mxx,mnz,mxz]};}
+function flowAt(x,z){for(const f of FLOWS){if(f.mat.uniforms.uAge.value>0.55)continue;const b=f.box;if(x<b[0]||x>b[1]||z<b[2]||z>b[3])continue;
+  for(const p of f.pts){if(p.l>f.front)break;const dx=x-p.x,dz=z-p.z;if(dx*dx+dz*dz<(p.w*0.42)**2)return terrH(x,z)+0.3;}}return null;}
+function erupt(V){V.e=0;V.bombN=10+Math.floor(Math.random()*8);V.nf=1+Math.floor(Math.random()*2.6);V.fT=1.2;
+  const d=Math.hypot(P.x-V.x,P.z-V.z),k=Math.max(0,1-d/320);shakeA=Math.max(shakeA,0.9*k*k);
+  if(k>0){tone(48,26,3.2,'sawtooth',0.16*k);tone(70,35,2.2,'square',0.05*k,0.1);hit(1.2,120,0.6*k);hit(0.8,300,0.35*k,0.25);}
+  if(d<220&&!erSeen){erSeen=true;learn('Erupción volcánica','Cuando el magma de dentro de la Tierra acumula mucha presión, el volcán explota y lanza lava y rocas ardientes llamadas bombas volcánicas. La lava baja por la ladera despacio, más o menos a la velocidad a la que caminas, y al enfriarse se cubre de una costra negra que se agrieta.');toast('¡Erupción! Dato nuevo en el Álbum',2200);}}
+function volcUpdate(dt){
+  LAVAU.uT.value=T;LAVAU.uSun.value.copy(SUN_DIR);shakeA=Math.max(0,shakeA-dt*0.35);
+  let lit=null,litI=0;
+  for(const V of VOLC){const d=Math.hypot(P.x-V.x,P.z-V.z),top=V.ly+0.5;
+    if(d>480)continue;
+    // humo continuo del cráter
+    V.smT=(V.smT||0)-dt;if(V.smT<=0){const er=V.e>=0&&V.e<14,big=er&&V.e<6;V.smT=er?0.035:0.28;const a=Math.random()*6.28,r=Math.random()*V.cr*0.5,sp=er?2.5:0.6;
+      ash(V.x+Math.cos(a)*r,top+1,V.z+Math.sin(a)*r,Math.cos(a)*sp+0.8,er?(big?20:13)+Math.random()*8:2.4+Math.random()*1.6,Math.sin(a)*sp+0.3,er?10:13,V.cr*(er?0.7:0.5),V.cr*(er?3.2:3),er?0.85:0.55,er?[0x24201e,0x3a3532,0x55504a,0x2e2a28][Math.floor(Math.random()*4)]:[0x9a958e,0x7e7872,0xb0aaa2][Math.floor(Math.random()*3)]);}
+    if(V.e<0){if(d<380){V.next-=dt;if(V.next<=0)erupt(V);}continue;}
+    V.e+=dt;const e=V.e;
+    if(e<7){// fuente de lava
+      const n=e<2?12:5;for(let i=0;i<n;i++){const a=Math.random()*6.28,sp=Math.random()*6;spat(V.x+Math.cos(a)*V.cr*0.3,top,V.z+Math.sin(a)*V.cr*0.3,Math.cos(a)*sp,14+Math.random()*18*(e<2?1.3:0.8),Math.sin(a)*sp,3,2+Math.random()*2.2);}}
+    if(e<4&&V.bombN>0&&Math.random()<dt*7){V.bombN--;const b=BOMBS.find(b=>!b.st);if(b){const a=Math.random()*6.28,sp=6+Math.random()*12;b.st=1;b.t=0;b.v=new THREE.Vector3(Math.cos(a)*sp,20+Math.random()*16,Math.sin(a)*sp);b.m.position.set(V.x,top+1,V.z);b.m.visible=true;b.gl.visible=true;b.m.scale.setScalar(0.6+Math.random()*0.9);b.spin=new THREE.Vector3(Math.random()*4,Math.random()*4,Math.random()*4);}}
+    if(V.nf>0&&e>V.fT){V.nf--;V.fT=e+1.5+Math.random()*2;const mine=FLOWS.filter(f=>f.V===V);if(mine.length>=3||FLOWS.length>=9){const o=mine[0]||FLOWS[0];scene.remove(o.mesh);o.mesh.geometry.dispose();o.mat.dispose();FLOWS.splice(FLOWS.indexOf(o),1);}
+      const f=makeFlow(V,Math.random()*6.28);if(f)FLOWS.push(f);}
+    if(e<9&&(!lit||d<litI)){lit=V;litI=d;}
+    if(e>16){V.e=-1;V.next=40+Math.random()*45;}}
+  if(volcLight){if(lit){const e=lit.e;volcLight.position.set(lit.x,lit.ly+10,lit.z);volcLight.intensity=(e<1?e*4:Math.max(0,4-(e-1)*0.5))*(0.75+Math.random()*0.5);}else{let nb=null,nd=1e9;for(const V of VOLC){const d=Math.hypot(P.x-V.x,P.z-V.z);if(d<nd){nd=d;nb=V;}}volcLight.position.set(nb.x,nb.ly+6,nb.z);volcLight.intensity=nd<200?0.7+Math.sin(T*1.3)*0.15:0;}}
+  // partículas
+  for(const p of ASH){if(p.life<=0)continue;p.life-=dt;if(p.life<=0){p.sp.visible=false;continue;}const t=1-p.life/p.max;p.vy*=1-dt*0.22;const sp2=p.vy<6?1:0;p.vx+=dt*(0.35+p.vx*0.25*sp2);p.vz+=dt*p.vz*0.25*sp2;p.sp.position.x+=p.vx*dt;p.sp.position.y+=p.vy*dt;p.sp.position.z+=p.vz*dt;p.sp.scale.setScalar(p.s0+(p.s1-p.s0)*Math.sqrt(t));p.sp.material.rotation+=p.rs*dt;p.sp.material.opacity=p.op*Math.min(1,t*20)*(1-t*t);}
+  for(const p of SPAT){if(p.life<=0)continue;p.life-=dt;p.vy-=22*dt;p.sp.position.x+=p.vx*dt;p.sp.position.y+=p.vy*dt;p.sp.position.z+=p.vz*dt;const t=1-p.life/p.max;
+    if(p.life<=0||(p.vy<0&&p.sp.position.y<terrH(p.sp.position.x,p.sp.position.z))){p.life=0;p.sp.visible=false;continue;}p.sp.scale.setScalar(p.s*(1-t*0.5));p.sp.material.color.setRGB(1,Math.max(0.08,0.5-0.45*t),Math.max(0,0.12-0.12*t));}
+  for(const b of BOMBS){if(!b.st)continue;b.t+=dt;
+    if(b.st===1){b.v.y-=22*dt;b.m.position.addScaledVector(b.v,dt);b.m.rotation.x+=b.spin.x*dt;b.m.rotation.y+=b.spin.y*dt;
+      b.trT=(b.trT||0)-dt;if(b.trT<=0){b.trT=0.06;ash(b.m.position.x,b.m.position.y,b.m.position.z,0,0.5,0,2.2,0.8,2.6,0.6,0x3a3532);if(Math.random()<0.5)spat(b.m.position.x,b.m.position.y,b.m.position.z,(Math.random()-.5)*2,(Math.random()-.5)*2,(Math.random()-.5)*2,0.4,0.8);}
+      const g=terrH(b.m.position.x,b.m.position.z);if(b.v.y<0&&b.m.position.y<g+0.3){b.st=2;b.t=0;b.m.position.y=g+0.25;const x=b.m.position.x,z=b.m.position.z;
+        for(let i=0;i<10;i++)spat(x,g+0.3,z,(Math.random()-.5)*8,4+Math.random()*6,(Math.random()-.5)*8,1,0.9);ash(x,g+0.5,z,0,1.5,0,2.5,1.5,5,0.6,0x4a4440);
+        const dp=Math.hypot(P.x-x,P.z-z);if(dp<3.2&&Math.abs(P.y-g)<3)hurt(15,x,z,'Bomba volcánica');if(dp<60)hit(0.25,180,0.3*(1-dp/60));}}
+    else{const c=Math.max(0,1-b.t/6);b.m.material.emissiveIntensity=2*c;b.gl.material.opacity=c;if(b.t>8){b.st=0;b.m.visible=false;}}}
+  for(let i=FLOWS.length-1;i>=0;i--){const f=FLOWS[i];f.t+=dt;f.front=f.len*(1-Math.exp(-f.t/18))+Math.min(2,f.t*2);f.mat.uniforms.uFront.value=f.front;
+    const age=f.t<40?0:(f.t-40)/45;f.mat.uniforms.uAge.value=age;
+    if(age<0.6&&Math.random()<dt*3){let fp=f.pts[0];for(const p of f.pts){if(p.l>f.front)break;fp=p;}const g=terrH(fp.x,fp.z);ash(fp.x,g+0.5,fp.z,0,1.2,0,4,1.2,4,0.35,0x8a8580);if(Math.random()<0.5)spat(fp.x,g+0.4,fp.z,(Math.random()-.5)*2,2+Math.random()*2,(Math.random()-.5)*2,0.8,0.7);}
+    if(age>2){scene.remove(f.mesh);f.mesh.geometry.dispose();f.mat.dispose();FLOWS.splice(i,1);}}
+}
 function regionAt(){const r=Math.hypot(P.x,P.z);if(P.y<-10||r<80)return '';if(r<182)return 'mount';return inVolcano(P.x,P.z)?'vol':inJurassic(P.x,P.z)?'jur':'wild';}
 function combatUpdate(dt){
   texLava.offset.y-=dt*0.04;
   smokes.forEach(s=>{s.t+=dt*0.12;if(s.t>1)s.t-=1;const t=s.t;s.sp.position.set(s.V.x+Math.sin(t*6+s.V.x)*3*t,s.V.ly+2+t*28,s.V.z+t*6);s.sp.scale.setScalar(4+t*16);s.sp.material.opacity=0.55*(1-t);});
   CAMPS.forEach((c,i)=>{const f=0.85+Math.sin(T*12+i)*0.1+Math.random()*0.1;c.fire.scale.set(1.4*f,1.9*f,1);});
+  volcUpdate(dt);
   if(mode!=='play')return;
   const rg=regionAt();
-  if(rg!==region){region=rg;renderZone(curZone<0?0:curZone);if(rg&&!regionFound[rg]){regionFound[rg]=1;save();openCard('Nuevo lugar',REG[rg].n,REG[rg].fact);}}
+  if(rg!==region){if(rg==='vol'){let nb=null,nd=1e9;for(const V of VOLC){const d=Math.hypot(P.x-V.x,P.z-V.z);if(d<nd&&d>40){nd=d;nb=V;}}if(nb&&nb.e<0)nb.next=Math.min(nb.next,6);}region=rg;renderZone(curZone<0?0:curZone);if(rg&&!regionFound[rg]){regionFound[rg]=1;save();openCard('Nuevo lugar',REG[rg].n,REG[rg].fact);}}
   CAMPS.forEach((c,i)=>{if(!regionFound['c'+i]&&Math.hypot(P.x-c.x,P.z-c.z)<14){regionFound['c'+i]=1;save();toast(c.n+': aquí estás a salvo y te curas. Ya puedes viajar aquí desde el mapa.',4500);}});
   if(!regionFound.river&&Math.hypot(P.x,P.z)>200&&!inVolcano(P.x,P.z)&&Math.abs(Math.hypot(P.x,P.z)-RIV(Math.atan2(P.z,P.x)))<11&&P.y<12){regionFound.river=1;save();openCard('Nuevo lugar',REG.river.n,REG.river.fact);}
   $('bAtk').hidden=$('bAtk2').hidden=!(isTouch&&!paused&&!P.fly);$('bAtk').style.opacity=atkCd[0]>0?0.55:1;$('bAtk2').style.opacity=atkCd[1]>0?0.55:1;
@@ -2154,7 +2262,7 @@ function update(dt){
   if(P.y>-5){const th=terrH(tmpV.x,tmpV.z);if(tmpV.y<th+0.8)tmpV.y=th+0.8;}
   tmpV.y=Math.max(tmpV.y,P.y+0.3);
   if(P.fly&&!sel){flyCamera(dt);}
-  else{camPos.lerp(tmpV,sel||snapCam?1:Math.min(1,dt*8));snapCam=false;camera.position.copy(camPos);camera.lookAt(look);if(Math.abs(camera.fov-60)>0.05){camera.fov+=(60-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
+  else{camPos.lerp(tmpV,sel||snapCam?1:Math.min(1,dt*8));snapCam=false;camera.position.copy(camPos);camera.lookAt(look);if(shakeA>0.01){camera.position.x+=(Math.random()-.5)*shakeA;camera.position.y+=(Math.random()-.5)*shakeA;camera.rotation.z+=(Math.random()-.5)*shakeA*0.02;}if(Math.abs(camera.fov-60)>0.05){camera.fov+=(60-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
   if(sel){if(!camera.view||!camera.view.enabled)camera.setViewOffset(innerWidth,innerHeight,0,innerHeight*0.22,innerWidth,innerHeight);}else if(camera.view&&camera.view.enabled)camera.clearViewOffset();
   sky.position.copy(camera.position);earth.visible=atmo.visible=P.y>140;stars.position.copy(camera.position);
   sun.position.set(P.x+SUN_DIR.x*60,P.y+SUN_DIR.y*60,P.z+SUN_DIR.z*60);sun.target.position.set(P.x,P.y,P.z);
